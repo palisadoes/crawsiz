@@ -1,0 +1,13 @@
+# Sample logrotate file for crawsizd
+
+/opt/crawsiz/log/*.log {
+    daily
+    rotate 14
+    dateext
+    dateformat -%Y%m%d
+    create
+    compress
+    missingok
+    notifempty
+}
+
