@@ -49,6 +49,7 @@ class GetIDX(object):
         if result.count() == 1:
             for instance in result:
                 self.data_dict['pair'] = general.decode(instance.pair)
+                self.data_dict['last_timestamp'] = instance.last_timestamp
                 break
         else:
             log_message = ('Pair IDX %s not found.') % (idx_pair)
@@ -69,6 +70,20 @@ class GetIDX(object):
         """
         # Initialize key variables
         value = self.data_dict['pair']
+        return value
+
+    def last_timestamp(self):
+        """Get last_timestamp value.
+
+        Args:
+            None
+
+        Returns:
+            value: Value to return
+
+        """
+        # Initialize key variables
+        value = self.data_dict['last_timestamp']
         return value
 
 
@@ -109,6 +124,7 @@ class GetPair(object):
         if result.count() == 1:
             for instance in result:
                 self.data_dict['idx'] = instance.idx
+                self.data_dict['last_timestamp'] = instance.last_timestamp
                 break
         else:
             log_message = ('pair %s not found.') % (value)
@@ -129,6 +145,20 @@ class GetPair(object):
         """
         # Initialize key variables
         value = self.data_dict['idx']
+        return value
+
+    def last_timestamp(self):
+        """Get last_timestamp value.
+
+        Args:
+            None
+
+        Returns:
+            value: Value to return
+
+        """
+        # Initialize key variables
+        value = self.data_dict['last_timestamp']
         return value
 
 

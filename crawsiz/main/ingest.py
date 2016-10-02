@@ -1,7 +1,6 @@
 """Library to process the ingest of data files."""
 
 import csv
-import sys
 import os
 import re
 import time
@@ -11,7 +10,11 @@ import shutil
 
 # Append custom application libraries
 from crawsiz.utils import configuration
+from crawsiz.utils import general
 from crawsiz.utils import log
+from crawsiz.db import db_pair
+from crawsiz.db import db
+from crawsiz.db.db_orm import Data, Pair
 
 
 __author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
@@ -44,7 +47,6 @@ class Valid(object):
         """
         # Initialize key variables
         self.filepath = filepath
-
 
     def pair(self):
         """Determine the pair represented in the file.
@@ -117,7 +119,7 @@ class Valid(object):
             validity = False
             return validity
 
-        # Fail if filepath doesn't exist
+        # Fail if filepath is not a file
         if os.path.isfile(self.filepath) is False:
             log_message = (
                 'Expected %s to be a file. It is not.'
@@ -131,7 +133,6 @@ class Valid(object):
 
 
 class Ingest(object):
-
     """Class ingests file data to update the database.
 
     Args:
@@ -180,7 +181,14 @@ class Ingest(object):
 
         """
         # Initialize key variables
-        data = []
+        datapoints = []
+        last_updated = 0
+        max_timestamp = 0
+
+        # Get the last update time for the pair
+        if db_pair.pair_exists(self.pair) is True:
+            # Get the last updated time
+            last_updated = db_pair.GetPair(self.pair).last_timestamp()
 
         ######################################################################
         # Convert data
@@ -209,71 +217,46 @@ class Ingest(object):
                 timestamp = int(time.mktime(datetime.datetime.strptime(
                     r_date, "%Y.%m.%d %H:%M").timetuple()))
 
-                print(', '.join(line))
+                # Skip if data is stale
+                if timestamp <= last_updated:
+                    continue
 
-        """
-        # Read file
-        with open(filename, 'r') as f_handle:
-            for nextline in f_handle:
-                # Split line
-                line = nextline.split(',')
+                # Assign values to database object
+                datapoint = Data(
+                    fxopen=r_open,
+                    fxclose=r_close,
+                    fxhigh=r_high,
+                    fxlow=r_low,
+                    fxvolume=r_volume,
+                    timestamp=timestamp
+                )
+                datapoints.append(datapoint)
 
-                # Get data
-                r_date = ('%s %s') % (line[0], line[1])
-                r_open = float(line[2])
-                r_high = float(line[3])
-                r_low = float(line[4])
-                r_close = float(line[5])
-                r_volume = int(line[6])
+                # Assign max_timestamp
+                max_timestamp = max(timestamp, max_timestamp)
 
-                # Convert date to timestamp
-                timestamp = int(time.mktime(datetime.datetime.strptime(
-                    r_date, "%Y.%m.%d %H:%M").timetuple()))
+        # Update only if we have data
+        if bool(datapoints) is True:
+            # Update Data table
+            database = db.Database()
+            database.add_all(datapoints, 9999)
 
-                # Append data
-                row = [self.pair, timestamp, r_open,
-                       r_close, r_high, r_low, r_volume]
-                data.append(row)
-        """
+            # Update last updated for Pair
+            database = db.Database()
+            session = database.session()
+            result = session.query(Pair).filter(
+                Pair.pair == self.pair.encode()).one()
+            result.last_timestamp = max_timestamp
+            session.commit()
 
-        return None
+            # Archive the ingest file
+            # _archive_ingest_file(self.filepath)
 
 
-def _update_database(data=None, config_file=None, timeframe=None):
+def _archive_ingest_file(filepath):
     """Update databse with data.
 
     Args:
-        data: List of lists representing data from the file
-            [[symbol, timestamp, open, close, high, low, volume],
-             [symbol, timestamp, open, close, high, low, volume],
-             [symbol, timestamp, open, close, high, low, volume]]
-        config_file: Configuration filename
-        timeframe: Timeframe data belongs to
-
-    Returns:
-        None
-
-    """
-    # Initialize key variables
-    sql_statement = (
-        'REPLACE INTO fx_%s '
-        '(symbol, timestamp, open, close, high, low, volume) '
-        ' VALUES ') % (timeframe)
-    sql_statement = ('%s %s') % (
-        sql_statement, '(%s, %s, %s, %s, %s, %s, %s)')
-
-    # Create database object
-    database = db.Database(config_file=config_file)
-
-    # Do SQL update
-    database.db_modify(sql_statement, 'AB-0010', data_list=data)
-
-
-def _archive_ingest_file(config_file, filepath):
-    """Update databse with data.
-
-    Args:
-        config_file: Config file to use
         filepath: File to zip
 
     Returns:
@@ -281,8 +264,8 @@ def _archive_ingest_file(config_file, filepath):
 
     """
     # Initialize key variables
-    config = configuration.ProcessConfig(config_file=config_file)
-    archive_directory = config.ingest_archive_directory()
+    config = configuration.Config()
+    archive_directory = config.archive_directory()
     timestamp = int(time.time())
 
     # Create target filename

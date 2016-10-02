@@ -17,9 +17,9 @@ BASE = declarative_base()
 
 
 class Data(BASE):
-    """Class defining the crw_data table of the database."""
+    """Class defining the xs_data table of the database."""
 
-    __tablename__ = 'crw_data'
+    __tablename__ = 'xs_data'
     __table_args__ = (
         PrimaryKeyConstraint(
             'idx_cross', 'timestamp'),
@@ -29,7 +29,7 @@ class Data(BASE):
         )
 
     idx_cross = Column(
-        BIGINT(unsigned=True), ForeignKey('crw_pair.idx'),
+        BIGINT(unsigned=True), ForeignKey('xs_pair.idx'),
         nullable=False, server_default='1')
 
     fxopen = Column(FLOAT, default=None)
@@ -53,9 +53,9 @@ class Data(BASE):
 
 
 class Pair(BASE):
-    """Class defining the crw_pair table of the database."""
+    """Class defining the xs_pair table of the database."""
 
-    __tablename__ = 'crw_pair'
+    __tablename__ = 'xs_pair'
     __table_args__ = (
         UniqueConstraint(
             'pair'),
@@ -69,6 +69,9 @@ class Pair(BASE):
         autoincrement=True, nullable=False)
 
     pair = Column(VARBINARY(512), nullable=True, default=None)
+
+    last_timestamp = Column(
+        BIGINT(unsigned=True), nullable=False, server_default='0')
 
     ts_modified = Column(
         DATETIME, server_default=text(
