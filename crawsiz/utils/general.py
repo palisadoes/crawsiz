@@ -406,3 +406,23 @@ def search_file(filename):
 
     # Return
     return result
+
+
+def gmt_timestamp(datetime_object):
+    """Convert a datetime object to its equivalent GMT timestamp.
+
+    Args:
+        datetime_object: Datetime object
+
+    Returns:
+        timestamp: Epoch timestamp
+
+    """
+    # Initialize key variables
+    gmt_offset = 28800
+
+    # Start decode
+    timestamp = int(time.mktime(datetime_object.utctimetuple())) - gmt_offset
+
+    # Return
+    return timestamp

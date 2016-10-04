@@ -22,13 +22,13 @@ class Data(BASE):
     __tablename__ = 'xs_data'
     __table_args__ = (
         PrimaryKeyConstraint(
-            'idx_cross', 'timestamp'),
+            'idx_pair', 'timestamp'),
         {
             'mysql_engine': 'InnoDB'
         }
         )
 
-    idx_cross = Column(
+    idx_pair = Column(
         BIGINT(unsigned=True), ForeignKey('xs_pair.idx'),
         nullable=False, server_default='1')
 

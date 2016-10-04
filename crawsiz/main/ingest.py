@@ -4,7 +4,7 @@ import csv
 import os
 import re
 import time
-import datetime
+from datetime import datetime
 import zipfile
 import shutil
 
@@ -65,7 +65,7 @@ class Valid(object):
 
         # Extract symbol from filename
         filename = os.path.basename(self.filepath)
-        regex = re.compile(r'^([A-Z]{6})\d+.csv$')
+        regex = re.compile(r'^([A-Z]{6})1440.csv$')
         match = regex.search(filename)
 
         # Fail if invalid filename
@@ -182,13 +182,13 @@ class Ingest(object):
         """
         # Initialize key variables
         datapoints = []
-        last_updated = 0
         max_timestamp = 0
 
         # Get the last update time for the pair
-        if db_pair.pair_exists(self.pair) is True:
-            # Get the last updated time
-            last_updated = db_pair.GetPair(self.pair).last_timestamp()
+        last_updated = self._last_updated()
+
+        # Get pair IDX value
+        idx_pair = db_pair.GetPair(self.pair).idx()
 
         ######################################################################
         # Convert data
@@ -214,15 +214,21 @@ class Ingest(object):
                 r_volume = int(line[6])
 
                 # Convert date to timestamp
-                timestamp = int(time.mktime(datetime.datetime.strptime(
-                    r_date, "%Y.%m.%d %H:%M").timetuple()))
+                timestamp = general.gmt_timestamp(
+                    datetime.strptime(r_date, "%Y.%m.%d %H:%M")
+                    )
 
                 # Skip if data is stale
                 if timestamp <= last_updated:
                     continue
 
+                # Skip data if it is not on a UTC day boundary
+                if timestamp % 86400 != 0:
+                    continue
+
                 # Assign values to database object
                 datapoint = Data(
+                    idx_pair=idx_pair,
                     fxopen=r_open,
                     fxclose=r_close,
                     fxhigh=r_high,
@@ -250,7 +256,33 @@ class Ingest(object):
             session.commit()
 
             # Archive the ingest file
-            # _archive_ingest_file(self.filepath)
+            _archive_ingest_file(self.filepath)
+
+    def _last_updated(self):
+        """Get the timestamp for the last database update for the pair.
+
+        Args:
+            None
+
+        Returns:
+            last_updated: Epoch GMT timestamp
+
+        """
+        # Get the last update time for the pair
+        if db_pair.pair_exists(self.pair) is True:
+            # Get the last updated time
+            last_updated = db_pair.GetPair(self.pair).last_timestamp()
+        else:
+            # Prepare SQL query to read a record from the database.
+            record = Pair(pair=general.encode(self.pair))
+            database = db.Database()
+            database.add(record, 1081)
+
+            # Define the last updated time
+            last_updated = 0
+
+        # Return
+        return last_updated
 
 
 def _archive_ingest_file(filepath):
@@ -275,7 +307,7 @@ def _archive_ingest_file(filepath):
     # Create zip filename
     zip_filename = ('%s.%s.zip') % (
         target_filename,
-        datetime.datetime.fromtimestamp(
+        datetime.fromtimestamp(
             timestamp).strftime('%Y%m%d-%H%M%S'))
 
     # Move file
