@@ -1,5 +1,6 @@
 """Library to process the ingest of data files."""
 
+import decimal
 
 __author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
 __version__ = '0.0.1'
@@ -36,21 +37,33 @@ class Classify(object):
         self.periods = periods
 
     def max_high_percent(self):
-        """Calculate the max high as percent of mean.
+        """Calculate the max high as percent of current high.
 
         Args:
             None
 
         Returns:
-            result: Max high as percentage of mean.
+            result: Max high as percentage of current high.
 
         """
         # Initialize key variables
-        mean_high = self._mean_high()
-        max_high = max(self._samples_high())
+        result = self._max_high() / self._current_high()
 
-        # Get mean of list of last "periods" values
-        result = max_high / mean_high
+        # Return
+        return result
+
+    def min_low_percent(self):
+        """Calculate the min low as percent of current low.
+
+        Args:
+            None
+
+        Returns:
+            result: min low as percentage of current low.
+
+        """
+        # Initialize key variables
+        result = self._min_low() / self._current_low()
 
         # Return
         return result
@@ -132,6 +145,70 @@ class Classify(object):
         # Return
         return samples
 
+    def _max_high(self):
+        """Calculate the max of highs.
+
+        Args:
+            None
+
+        Returns:
+            result: max of highs
+
+        """
+        # Initialize key variables
+        result = max(self._samples_high())
+
+        # Return
+        return result
+
+    def _min_low(self):
+        """Calculate the min of lows.
+
+        Args:
+            None
+
+        Returns:
+            result: min of lows
+
+        """
+        # Initialize key variables
+        result = min(self._samples_low())
+
+        # Return
+        return result
+
+    def _current_high(self):
+        """Calculate the current high.
+
+        Args:
+            None
+
+        Returns:
+            result: current high
+
+        """
+        # Initialize key variables
+        result = self._samples_high()[-1]
+
+        # Return
+        return result
+
+    def _current_low(self):
+        """Calculate the current low.
+
+        Args:
+            None
+
+        Returns:
+            result: current low
+
+        """
+        # Initialize key variables
+        result = self._samples_low()[-1]
+
+        # Return
+        return result
+
     def _mean_high(self):
         """Calculate the mean of highs.
 
@@ -148,7 +225,7 @@ class Classify(object):
         # Return
         return result
 
-    def _atr_high(self):
+    def _atr(self):
         """Calculate the average true range.
 
         Args:
@@ -180,24 +257,100 @@ class Classify(object):
         # Return
         return result
 
-    def _in_range(self):
+    def max_atr_percent(self):
+        """Max high as percent of delta between current high + atr.
+
+        Args:
+            None
+
+        Returns:
+            result: Delta between max high and (current high + atr )
+
+        """
+        # Initialize key variables
+        current_high = self._current_high()
+        max_high = self._max_high()
+        atr = self._atr()
+
+        # Calculate the metric
+        metric = max_high - (current_high + atr)
+        result = metric / current_high
+
+        # Return
+        return result
+
+    def min_atr_percent(self):
+        """Min low as percent of delta between current low - atr.
+
+        Args:
+            None
+
+        Returns:
+            result: Delta between min low and (current low - atr )
+
+        """
+        # Initialize key variables
+        current_low = self._current_low()
+        min_low = self._min_low()
+        atr = self._atr()
+
+        # Calculate the metric
+        metric = min_low - (current_low - atr)
+        result = metric / current_low
+
+        # Return
+        return result
+
+    def min_psycho(self):
         """TBD.
 
         Args:
             None
 
         Returns:
-            result: TBD.
+            result: List of psychological lows as percentage of current low
 
         """
         # Initialize key variables
-        fx_high = self._samples_high()[-1]
-        fx_close = self._samples_close()[-1]
-        atr = self._atr_high()
+        lows = []
+        formatter = '10000.'
+        current_low = decimal.Decimal(self._current_low())
 
-        # Calculate the metric
-        metric = fx_high - (fx_close + atr)
-        result = metric / self._mean_high()
+        # Create list of minumum psychological numbers
+        for _ in range(0, 5):
+            formatter = ('%s0') % (formatter)
+            lows.append(
+                float(current_low.quantize(
+                    decimal.Decimal(formatter),
+                    rounding=decimal.ROUND_DOWN)) / self._current_low()
+            )
 
         # Return
-        return result
+        return lows
+
+    def max_psycho(self):
+        """TBD.
+
+        Args:
+            None
+
+        Returns:
+            result: List of psychological highs as percentage of current high
+
+        """
+        # Initialize key variables
+        highs = []
+        formatter = '10000.'
+        current_high = decimal.Decimal(self._current_high())
+
+        # Create list of maxumum psychological numbers
+        for _ in range(0, 5):
+            formatter = ('%s0') % (formatter)
+            highs.append(
+                float(current_high.quantize(
+                    decimal.Decimal(formatter),
+                    rounding=decimal.ROUND_DOWN)) / self._current_high()
+            )
+
+        # Return
+        return highs

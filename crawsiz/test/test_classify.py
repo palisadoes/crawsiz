@@ -3,6 +3,8 @@
 
 import unittest
 from mock import Mock
+import random
+import decimal
 
 from crawsiz.main import classify as testimport
 
@@ -45,9 +47,10 @@ class KnownValues(unittest.TestCase):
     # Create data for Mock
     seconds_in_day = 86400
     timestamps = list(range(0, seconds_in_day * 10, seconds_in_day))
-    fxhigh = list(range(100, 0, -10))
-    fxlow = list(range(60, 10, -5))
-    fxclose = list(range(-22, -2, 2))
+    starter_list = random.sample(range(1, 1000), 200)
+    fxhigh = [13 / value for value in starter_list]
+    fxlow = [7 / value for value in starter_list]
+    fxclose = [11 / value for value in starter_list]
 
     # Instantiate the Mock
     fxdata = Mock(spec=GetIDX)
@@ -68,11 +71,22 @@ class KnownValues(unittest.TestCase):
         """Testing function max_high_percent."""
         # Define the expected
         max_high = max(self.testobj._samples_high())
-        mean_high = self.testobj._mean_high()
-        expected = max_high / mean_high
+        current_high = self.testobj._samples_high()[-1]
+        expected = max_high / current_high
 
         # Compare with test results
         result = self.testobj.max_high_percent()
+        self.assertEqual(result, expected)
+
+    def test_min_low_percent(self):
+        """Testing function min_low_percent."""
+        # Define the expected
+        min_low = min(self.testobj._samples_low())
+        current_low = self.testobj._samples_low()[-1]
+        expected = min_low / current_low
+
+        # Compare with test results
+        result = self.testobj.min_low_percent()
         self.assertEqual(result, expected)
 
     def test__start_stop(self):
@@ -124,13 +138,107 @@ class KnownValues(unittest.TestCase):
         result = self.testobj._mean_high()
         self.assertEqual(result, expected)
 
-    def test__atr_high(self):
-        """Testing function _atr_high."""
+    def test__current_high(self):
+        """Testing function _current_high."""
+        # Define the expected
+        (start, stop) = _start_stop(
+            self.timestamps, self.timestamp, self.periods)
+        highs = self.fxhigh[start: stop]
+        expected = highs[-1]
+
+        # Compare with test results
+        result = self.testobj._current_high()
+        self.assertEqual(result, expected)
+
+    def test__current_low(self):
+        """Testing function _current_low."""
+        # Define the expected
+        (start, stop) = _start_stop(
+            self.timestamps, self.timestamp, self.periods)
+        lows = self.fxlow[start: stop]
+        expected = lows[-1]
+
+        # Compare with test results
+        result = self.testobj._current_low()
+        self.assertEqual(result, expected)
+
+    def test__min_low(self):
+        """Testing function _min_low."""
+        # Define the expected
+        (start, stop) = _start_stop(
+            self.timestamps, self.timestamp, self.periods)
+        lows = self.fxlow[start: stop]
+        expected = min(lows)
+
+        # Compare with test results
+        result = self.testobj._min_low()
+        self.assertEqual(result, expected)
+
+    def test__max_high(self):
+        """Testing function _max_high."""
+        # Define the expected
+        (start, stop) = _start_stop(
+            self.timestamps, self.timestamp, self.periods)
+        highs = self.fxhigh[start: stop]
+        expected = max(highs)
+
+        # Compare with test results
+        result = self.testobj._max_high()
+        self.assertEqual(result, expected)
+
+    def test__atr(self):
+        """Testing function _atr."""
         pass
 
-    def test__in_range(self):
-        """Testing function _in_range."""
+    def test_max_atr_percent(self):
+        """Testing function max_atr_percent."""
         pass
+
+    def test_min_atr_percent(self):
+        """Testing function min_atr_percent."""
+        pass
+
+    def test_min_psycho(self):
+        """Testing function min_psycho."""
+        # Initialize key variables
+        lows = []
+        current_low = decimal.Decimal(self.testobj._current_low())
+        formatter = '10000.'
+
+        # Create list of minumum psychological numbers
+        for _ in range(0, 5):
+            formatter = ('%s0') % (formatter)
+            lows.append(
+                float(current_low.quantize(
+                    decimal.Decimal(formatter),
+                    rounding=decimal.ROUND_DOWN)) / float(current_low)
+            )
+
+        # Test
+        result = self.testobj.min_psycho()
+        for idx, expected in enumerate(lows):
+            self.assertEqual(result[idx], expected)
+
+    def test_max_psycho(self):
+        """Testing function max_psycho."""
+        # Initialize key variables
+        highs = []
+        current_high = decimal.Decimal(self.testobj._current_high())
+        formatter = '10000.'
+
+        # Create list of maxumum psychological numbers
+        for _ in range(0, 5):
+            formatter = ('%s0') % (formatter)
+            highs.append(
+                float(current_high.quantize(
+                    decimal.Decimal(formatter),
+                    rounding=decimal.ROUND_DOWN)) / float(current_high)
+            )
+
+        # Test
+        result = self.testobj.max_psycho()
+        for idx, expected in enumerate(highs):
+            self.assertEqual(result[idx], expected)
 
 
 def _start_stop(timestamps, timestamp, periods):
