@@ -64,6 +64,9 @@ class ProcessCli(object):
         # Parse "autoingest", return object used for parser
         _cli_autoingest(subparsers, width=width)
 
+        # Parse "process", return object used for parser
+        _cli_process(subparsers, width=width)
+
         # Return the CLI arguments
         args = parser.parse_args()
 
@@ -97,4 +100,23 @@ def _cli_autoingest(subparsers, width=80):
         default=False,
         help=textwrap.fill(
             'Flag to archive autoingested data file', width=width)
+    )
+
+
+def _cli_process(subparsers, width=80):
+    """Process "process" CLI commands.
+
+    Args:
+        subparsers: Subparsers object
+        width: Width of the help text string to STDIO before wrapping
+
+    Returns:
+        None
+
+    """
+    # Initialize key variables
+    parser = subparsers.add_parser(
+        'process',
+        help=textwrap.fill(
+            'Process FX data from database.', width=width)
     )

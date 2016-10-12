@@ -12,6 +12,7 @@ import time
 
 # Import crawsiz libraries
 from crawsiz.main import ingest
+from crawsiz.main import feature
 from crawsiz.utils import configuration
 from crawsiz.utils import cli
 from crawsiz.utils import general
@@ -67,22 +68,14 @@ This processes XML data from FXCM http:// feeds.
             if filecheck.valid() is False:
                 continue
 
-            # Insert pair in database if it doesn't exist
-            pair = filecheck.pair()
-            if db_pair.pair_exists(pair) is False:
-                # Prepare SQL query to read a record from the database.
-                record = Pair(pair=general.encode(pair))
-                database = db.Database()
-                database.add(record, 1081)
-
             # Ingest data
             ingest_object = ingest.Ingest(filepath)
             ingest_object.ingest()
-            continue
 
-            if cli_args.filetype == 1:
-                timeframe = ingest_object.ingest_type_01_file(
-                    filename=filepath, archive=cli_args.archive)
+    # Process data
+    if cli_args.mode == 'process':
+        # Process data
+        feature.process(1)
 
 
 if __name__ == '__main__':
