@@ -512,7 +512,7 @@ def process(idx_pair, years=6):
 
     """
     # Initialize key variables
-    lookahead = 2
+    lookahead = 1
     seconds_in_year = 3600 * 24 * 365
     klasses_high = []
     classes_low = []
@@ -574,16 +574,16 @@ def process(idx_pair, years=6):
     # Start predictions (high)
     print('Predicting Highs')
     predicted_high = []
-    for feature_vector in np_feature_vectors:
-        next_class = linear.prediction(feature_vector, np_klasses_high)
+    for np_feature_vector in np_feature_vectors:
+        next_class = linear.prediction(np_feature_vector, np_klasses_high)
         predicted_high.append(next_class)
     np_predicted_high = np.asarray(predicted_high)
 
     # Start predictions (low)
     print('Predicting Lows')
     predicted_low = []
-    for feature_vector in np_feature_vectors:
-        next_class = linear.prediction(feature_vector, np_klasses_low)
+    for np_feature_vector in np_feature_vectors:
+        next_class = linear.prediction(np_feature_vector, np_klasses_low)
         predicted_low.append(next_class)
     np_predicted_low = np.asarray(predicted_low)
 
@@ -591,8 +591,19 @@ def process(idx_pair, years=6):
     print('Confusion Matrix Calculation')
     # print(type(np_klasses_high), np_klasses_high.shape, type(np_predicted_high), np_predicted_high.shape)
     # sys.exit(0)
-    matrix_high = confusion_matrix(np_classes_high, np_predicted_high)
+
+    print(type(np_classes_high), np_classes_high.shape)
+    print(type(np_klasses_high), np_klasses_high.shape)
+    print(type(np_predicted_high), np_predicted_high.shape)
+    #sys.exit(0)
+
+    if lookahead > 1:
+        matrix_high = confusion_matrix(np_classes_high, np_predicted_high)
+        matrix_low = confusion_matrix(np_classes_low, np_predicted_low)
+    else:
+        matrix_high = confusion_matrix(np_klasses_high, np_predicted_high)
+        matrix_low = confusion_matrix(np_klasses_low, np_predicted_low)
+
     pprint(matrix_high)
 
-    matrix_low = confusion_matrix(np_classes_low, np_predicted_low)
     pprint(matrix_low)

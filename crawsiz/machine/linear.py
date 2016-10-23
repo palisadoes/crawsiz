@@ -91,5 +91,3 @@ def kessler_to_number(classification):
         result = values.index(maximum)
 
     return result
-
-
