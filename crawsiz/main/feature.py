@@ -541,7 +541,7 @@ class FeatureVector(object):
 
         # Create features
         for timestamp in timestamps[199:-lookahead]:
-            feature_vector = [0]
+            feature_vector = []
             for period in [20, 40, 60]:
                 feature = Feature(fxdata, timestamp, period)
 

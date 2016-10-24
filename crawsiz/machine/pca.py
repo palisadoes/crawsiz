@@ -2,12 +2,9 @@
 
 # Standard python imports
 import sys
-import csv
-import time
 from collections import defaultdict
 import math
 import operator
-from pprint import pprint
 
 # Non-standard python imports
 import numpy as np
@@ -27,38 +24,36 @@ class PCA(object):
         get_cli:
     """
 
-    def __init__(self, data):
+    def __init__(self, feature_vectors, classes):
         """Function for intializing the class.
 
         Args:
-            data: List of tuples of format
-                (class, feature_vector)
+            feature_vectors: (X, Y) Numpy array of feature vectors
+            classes: (y,) Numpy array of corresponding classes
 
         """
         # Initialize key variables
-        self.data = data
         self.x_values = {}
         self.pca = defaultdict(lambda: defaultdict(dict))
-        class_rows = {}
 
         # Determine the number of dimensions in vector
-        # Create a list of lists
-        for cls, vector in data:
-            if cls in class_rows:
-                class_rows[cls].append(vector)
+        index = 0
+        for feature_vector in feature_vectors:
+            cls = classes[index]
+            if cls in self.x_values.keys():
+                self.x_values[cls] = np.vstack(
+                    self.x_values[cls], feature_vector)
             else:
-                class_rows[cls] = []
-                class_rows[cls].append(vector)
+                self.x_values[cls] = feature_vector
 
-        # Create a numpy array for the class
-        for cls in class_rows.keys():
-            self.x_values[cls] = np.asarray(class_rows[cls])
+            # Increment index
+            index += 1
 
         # Note the available classes
-        self.available_classes = sorted(class_rows.keys())
+        self.available_classes = sorted(self.x_values.keys())
 
         # Create a numpy array for the class
-        if len(self.x_values.keys()) != 2:
+        if len(self.available_classes) != 2:
             print('PCA2d class works best with two keys')
             sys.exit(0)
 

@@ -20,16 +20,22 @@ class Linear(object):
         get_cli:
     """
 
-    def __init__(self, data):
+    def __init__(self, feature_vectors):
         """Function for intializing the class.
 
         Args:
-            data: Kessler training data
-                (numpy list of lists, first column is always 1)
+            feature_vectors: Numpy array of feature vectors
 
         """
         # Initialize key variables
-        self.data = data.tolist()
+        (rows, _) = feature_vectors.shape
+
+        # Append a column of ones to array
+        ones = np.ones((rows, 1))
+        kessler_array = np.hstack((ones, feature_vectors))
+
+        # Make array available to rest of class
+        self.data = kessler_array.tolist()
 
     def classifier(self, classes):
         """Create binary linear classifier.
@@ -46,17 +52,21 @@ class Linear(object):
         result = np.dot(pseudo, classes)
         return result
 
-    def prediction(self, vector, classes):
+    def prediction(self, feature_vector, classes):
         """Predict the class of the vector.
 
         Args:
-            vector: Vector
+            feature_vector: Feature vector
 
         Returns:
             result: Class of prediction
 
         """
-        # Initialize key variables
+        # Prepend a "1" to the vector
+        ones = np.ones((1, ))
+        vector = np.hstack((ones, feature_vector))
+
+        # Classify
         classification = np.dot(vector, self.classifier(classes))
 
         # Return
