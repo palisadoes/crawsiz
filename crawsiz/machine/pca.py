@@ -40,6 +40,8 @@ class PCA(object):
         index = 0
         for feature_vector in feature_vectors:
             cls = classes[index]
+
+            # Add feature vector to appropriate X value dict key.
             if cls in self.x_values.keys():
                 self.x_values[cls] = np.vstack(
                     self.x_values[cls], feature_vector)
