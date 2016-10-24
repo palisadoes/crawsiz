@@ -500,6 +500,135 @@ class Feature(object):
         return highs
 
 
+class FeatureVector(object):
+    """Class to create feature vectors from database.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    Methods:
+
+    """
+
+    def __init__(self, idx_pair, lookahead=1, years=6):
+        """Method for intializing the class.
+
+        Args:
+            fxdata: Object of fxdata table
+            timestamp: Ending timestamp of data subset to be analyzed
+            periods: Number of periods before timestamp to analyze
+
+        Returns:
+            None
+
+        """
+        # Initialize key variables
+        seconds_in_year = 3600 * 24 * 365
+        self.kessler_classes_high = []
+        self.kessler_classes_low = []
+        self.regular_classes_high = []
+        self.regular_classes_low = []
+        self.feature_vectors = []
+        ts_stop = int(time.time())
+        ts_start = ts_stop - (years * seconds_in_year)
+
+        # Get data object for
+        fxdata = db_data.GetIDX(idx_pair, ts_start, ts_stop)
+        timestamps = fxdata.timestamp()
+
+        # Create features
+        for timestamp in timestamps[199:-lookahead]:
+            feature_vector = [0]
+            for period in [20, 40, 60]:
+                feature = Feature(fxdata, timestamp, period)
+
+                # Append feature to feature_vector
+                feature_vector.append(feature.max_high_percent())
+                feature_vector.append(feature.min_low_percent())
+                feature_vector.append(feature.mean_high_percent())
+                feature_vector.append(feature.mean_low_percent())
+                feature_vector.append(feature.max_atr_percent())
+                feature_vector.append(feature.min_atr_percent())
+                feature_vector.extend(feature.min_psycho())
+                feature_vector.extend(feature.max_psycho())
+
+            # Append for 200 moving average value
+            feature = Feature(fxdata, timestamp, 200)
+            feature_vector.append(feature.mean_high_percent())
+            feature_vector.append(feature.mean_low_percent())
+
+            # Get classification
+            classify = Classify(fxdata, timestamp, lookahead)
+            self.kessler_classes_high.append(classify.high())
+            self.kessler_classes_low.append(classify.low())
+            self.regular_classes_high.append(classify.high(kessler=False))
+            self.regular_classes_low.append(classify.low(kessler=False))
+
+            # Append feature vector to list of feature vectors
+            self.feature_vectors.append(feature_vector)
+
+    def classes_high(self, kessler=False):
+        """Method returning the high classifications of all feature vectors.
+
+        Args:
+            kessler: True if kesslerized results required
+
+        Returns:
+            data: One dimensional numpy array of classifications for each
+                feature vector.
+
+        """
+        # Initialize key variables
+        data = None
+
+        # Return
+        if kessler is True:
+            data = np.asarray(self.kessler_classes_high)
+        else:
+            data = np.asarray(self.regular_classes_high)
+        return data
+
+    def classes_low(self, kessler=False):
+        """Method returning the low classifications of all feature vectors.
+
+        Args:
+            kessler: True if kesslerized results required
+
+        Returns:
+            data: One dimensional numpy array of classifications for each
+                feature vector.
+
+        """
+        # Initialize key variables
+        data = None
+
+        # Return
+        if kessler is True:
+            data = np.asarray(self.kessler_classes_low)
+        else:
+            data = np.asarray(self.regular_classes_low)
+        return data
+
+    def dump(self):
+        """Method returning all feature vectors.
+
+        Args:
+            None
+
+        Returns:
+            data: Numpy array of all feature vectors.
+
+        """
+        # Initialize key variables
+        data = np.asarray(self.feature_vectors)
+
+        # Return data
+        return data
+
+
 def process(idx_pair, years=6):
     """Process data.
 
@@ -513,96 +642,54 @@ def process(idx_pair, years=6):
     """
     # Initialize key variables
     lookahead = 1
-    seconds_in_year = 3600 * 24 * 365
-    klasses_high = []
-    classes_low = []
-    classes_high = []
-    klasses_low = []
-    feature_vectors = []
-    ts_stop = int(time.time())
-    ts_start = ts_stop - (years * seconds_in_year)
 
-    # Get data object for
-    fxdata = db_data.GetIDX(idx_pair, ts_start, ts_stop)
-    timestamps = fxdata.timestamp()
+    # Get data object
+    data = FeatureVector(idx_pair, lookahead=lookahead, years=years)
+    feature_vectors = data.dump()
 
-    # Create features
-    for timestamp in timestamps[199:-lookahead]:
-        feature_vector = [0]
-        for period in [20, 40, 60]:
-            feature = Feature(fxdata, timestamp, period)
-
-            # Append feature to feature_vector
-            feature_vector.append(feature.max_high_percent())
-            feature_vector.append(feature.min_low_percent())
-            feature_vector.append(feature.mean_high_percent())
-            feature_vector.append(feature.mean_low_percent())
-            feature_vector.append(feature.max_atr_percent())
-            feature_vector.append(feature.min_atr_percent())
-            feature_vector.extend(feature.min_psycho())
-            feature_vector.extend(feature.max_psycho())
-
-        # Append for 200 moving average value
-        feature = Feature(fxdata, timestamp, 200)
-        feature_vector.append(feature.mean_high_percent())
-        feature_vector.append(feature.mean_low_percent())
-
-        # Get classification
-        classify = Classify(fxdata, timestamp, lookahead)
-        klasses_high.append(classify.high())
-        klasses_low.append(classify.low())
-        classes_high.append(classify.high(kessler=False))
-        classes_low.append(classify.low(kessler=False))
-
-        # Append feature vector to list of feature vectors
-        feature_vectors.append(feature_vector)
-
-        # Print
-        # print(feature_vector, classify.low(), classify.high(), '\n')
-
-    # Apply classifer
+    # Apply classifer to all feature vectors
     linear = Linear(feature_vectors)
-    # classifier_high = linear.classifier(klasses_high)
-    # classifier_low = linear.classifier(klasses_low)
 
-    np_classes_high = np.asarray(classes_high)
-    np_classes_low = np.asarray(classes_low)
-    np_klasses_high = np.asarray(klasses_high)
-    np_klasses_low = np.asarray(klasses_low)
-    np_feature_vectors = np.asarray(feature_vectors)
+    # Assign values
+    classes_high = data.classes_high()
+    classes_low = data.classes_low()
+    klasses_high = data.classes_high(kessler=True)
+    klasses_low = data.classes_low(kessler=True)
 
     # Start predictions (high)
     print('Predicting Highs')
-    predicted_high = []
-    for np_feature_vector in np_feature_vectors:
-        next_class = linear.prediction(np_feature_vector, np_klasses_high)
-        predicted_high.append(next_class)
-    np_predicted_high = np.asarray(predicted_high)
+    predictions = []
+    for feature_vector in feature_vectors:
+        next_class = linear.prediction(feature_vector, klasses_high)
+        predictions.append(next_class)
+    predicted_high = np.asarray(predictions)
 
     # Start predictions (low)
     print('Predicting Lows')
-    predicted_low = []
-    for np_feature_vector in np_feature_vectors:
-        next_class = linear.prediction(np_feature_vector, np_klasses_low)
-        predicted_low.append(next_class)
-    np_predicted_low = np.asarray(predicted_low)
+    predictions = []
+    for feature_vector in feature_vectors:
+        next_class = linear.prediction(feature_vector, klasses_low)
+        predictions.append(next_class)
+    predicted_low = np.asarray(predictions)
 
     # Confusion matrix
     print('Confusion Matrix Calculation')
-    # print(type(np_klasses_high), np_klasses_high.shape, type(np_predicted_high), np_predicted_high.shape)
+
+    # print(type(klasses_high), klasses_high.shape)
+    # print(type(predicted_high), predicted_high.shape)
     # sys.exit(0)
 
-    print(type(np_classes_high), np_classes_high.shape)
-    print(type(np_klasses_high), np_klasses_high.shape)
-    print(type(np_predicted_high), np_predicted_high.shape)
-    #sys.exit(0)
+    print(type(classes_high), classes_high.shape)
+    print(type(klasses_high), klasses_high.shape)
+    print(type(predicted_high), predicted_high.shape)
+    # sys.exit(0)
 
     if lookahead > 1:
-        matrix_high = confusion_matrix(np_classes_high, np_predicted_high)
-        matrix_low = confusion_matrix(np_classes_low, np_predicted_low)
+        matrix_high = confusion_matrix(classes_high, predicted_high)
+        matrix_low = confusion_matrix(classes_low, predicted_low)
     else:
-        matrix_high = confusion_matrix(np_klasses_high, np_predicted_high)
-        matrix_low = confusion_matrix(np_klasses_low, np_predicted_low)
+        matrix_high = confusion_matrix(klasses_high, predicted_high)
+        matrix_low = confusion_matrix(klasses_low, predicted_low)
 
     pprint(matrix_high)
 

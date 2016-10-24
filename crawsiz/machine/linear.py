@@ -25,11 +25,11 @@ class Linear(object):
 
         Args:
             data: Kessler training data
-                (list of lists, first column is always 1)
+                (numpy list of lists, first column is always 1)
 
         """
         # Initialize key variables
-        self.data = data
+        self.data = data.tolist()
 
     def classifier(self, classes):
         """Create binary linear classifier.
