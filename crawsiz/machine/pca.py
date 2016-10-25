@@ -39,12 +39,12 @@ class PCA(object):
         # Determine the number of dimensions in vector
         index = 0
         for feature_vector in feature_vectors:
-            cls = classes[index]
+            cls = classes[index][0]
 
             # Add feature vector to appropriate X value dict key.
-            if cls in self.x_values.keys():
+            if cls in self.x_values:
                 self.x_values[cls] = np.vstack(
-                    self.x_values[cls], feature_vector)
+                    (self.x_values[cls], feature_vector))
             else:
                 self.x_values[cls] = feature_vector
 

@@ -11,6 +11,9 @@ import numpy as np
 # Import custom libraries
 from crawsiz.db import db_data
 from crawsiz.machine.linear import Linear
+from crawsiz.machine import pca
+from crawsiz.machine import classifier2d
+
 
 __author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
 __version__ = '0.0.1'
@@ -642,6 +645,7 @@ def process(idx_pair, years=6):
     """
     # Initialize key variables
     lookahead = 1
+    components = 20
 
     # Get data object
     data = FeatureVector(idx_pair, lookahead=lookahead, years=years)
@@ -656,6 +660,7 @@ def process(idx_pair, years=6):
     klasses_high = data.classes_high(kessler=True)
     klasses_low = data.classes_low(kessler=True)
 
+    """
     # Start predictions (high)
     print('Predicting Highs')
     predictions = []
@@ -675,15 +680,6 @@ def process(idx_pair, years=6):
     # Confusion matrix
     print('Confusion Matrix Calculation')
 
-    # print(type(klasses_high), klasses_high.shape)
-    # print(type(predicted_high), predicted_high.shape)
-    # sys.exit(0)
-
-    print(type(classes_high), classes_high.shape)
-    print(type(klasses_high), klasses_high.shape)
-    print(type(predicted_high), predicted_high.shape)
-    # sys.exit(0)
-
     if lookahead > 1:
         matrix_high = confusion_matrix(classes_high, predicted_high)
         matrix_low = confusion_matrix(classes_low, predicted_low)
@@ -694,3 +690,27 @@ def process(idx_pair, years=6):
     pprint(matrix_high)
 
     pprint(matrix_low)
+    """
+
+    # Run PCA analysis
+    print(('PCA Calculation: %s Components') % (components))
+    print('\nHighs')
+    pca_object = pca.PCA(feature_vectors, klasses_high)
+    bayes_classifier = classifier2d.Bayesian(
+        pca_object, components=components)
+    g_accuracy = bayes_classifier.accuracy()
+    for cls in [None, -1, 1]:
+        print(
+            ('Class %s: %.2f%%') % (cls, g_accuracy[cls])
+        )
+
+    print('\nLows')
+    pca_object = pca.PCA(feature_vectors, klasses_low)
+    bayes_classifier = classifier2d.Bayesian(
+        pca_object, components=components)
+    g_accuracy = bayes_classifier.accuracy()
+    for cls in [None, -1, 1]:
+        print(
+            ('Class %s: %.2f%%') % (cls, g_accuracy[cls])
+        )
+
