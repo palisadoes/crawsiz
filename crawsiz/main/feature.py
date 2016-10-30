@@ -1,18 +1,17 @@
 """Library to process the ingest of data files."""
 
-import sys
+# Standard imports
 import time
 import decimal
-from pprint import pprint
 
-from sklearn.metrics import confusion_matrix
+# Non standard imports
 import numpy as np
 
 # Import custom libraries
 from crawsiz.db import db_data
-from crawsiz.machine.linear import Linear
+from crawsiz.machine import accuracy
 from crawsiz.machine import pca
-from crawsiz.machine import classifier2d
+from crawsiz.machine import classifier
 
 
 __author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
@@ -503,7 +502,7 @@ class Feature(object):
         return highs
 
 
-class FeatureVector(object):
+class Extract(object):
     """Class to create feature vectors from database.
 
     Args:
@@ -520,58 +519,38 @@ class FeatureVector(object):
         """Method for intializing the class.
 
         Args:
-            fxdata: Object of fxdata table
-            timestamp: Ending timestamp of data subset to be analyzed
-            periods: Number of periods before timestamp to analyze
+            idx_pair: FX cross
+            lookahead: Number of periods to use for classification
+            years: Years of data to retrieve
 
         Returns:
             None
 
         """
         # Initialize key variables
-        seconds_in_year = 3600 * 24 * 365
         self.kessler_classes_high = []
         self.kessler_classes_low = []
         self.regular_classes_high = []
         self.regular_classes_low = []
         self.feature_vectors = []
-        ts_stop = int(time.time())
-        ts_start = ts_stop - (years * seconds_in_year)
 
         # Get data object for
-        fxdata = db_data.GetIDX(idx_pair, ts_start, ts_stop)
+        fxdata = getdata(idx_pair, years=years)
         timestamps = fxdata.timestamp()
 
         # Create features
         for timestamp in timestamps[199:-lookahead]:
-            feature_vector = []
-            for period in [20, 40, 60]:
-                feature = Feature(fxdata, timestamp, period)
+            # Append feature vector for this timestamp
+            # to the list of feature vectors
+            feature_vector = vector(fxdata, timestamp)
+            self.feature_vectors.append(feature_vector)
 
-                # Append feature to feature_vector
-                feature_vector.append(feature.max_high_percent())
-                feature_vector.append(feature.min_low_percent())
-                feature_vector.append(feature.mean_high_percent())
-                feature_vector.append(feature.mean_low_percent())
-                feature_vector.append(feature.max_atr_percent())
-                feature_vector.append(feature.min_atr_percent())
-                feature_vector.extend(feature.min_psycho())
-                feature_vector.extend(feature.max_psycho())
-
-            # Append for 200 moving average value
-            feature = Feature(fxdata, timestamp, 200)
-            feature_vector.append(feature.mean_high_percent())
-            feature_vector.append(feature.mean_low_percent())
-
-            # Get classification
+            # Get classification for this timestamp
             classify = Classify(fxdata, timestamp, lookahead)
             self.kessler_classes_high.append(classify.high())
             self.kessler_classes_low.append(classify.low())
             self.regular_classes_high.append(classify.high(kessler=False))
             self.regular_classes_low.append(classify.low(kessler=False))
-
-            # Append feature vector to list of feature vectors
-            self.feature_vectors.append(feature_vector)
 
     def classes_high(self, kessler=False):
         """Method returning the high classifications of all feature vectors.
@@ -615,7 +594,7 @@ class FeatureVector(object):
             data = np.asarray(self.regular_classes_low)
         return data
 
-    def dump(self):
+    def vectors(self):
         """Method returning all feature vectors.
 
         Args:
@@ -632,6 +611,66 @@ class FeatureVector(object):
         return data
 
 
+def getdata(idx_pair, years=6):
+    """Retrieve data from database.
+
+    Args:
+        idx_pair: FX cross
+        years: Years of data to retrieve
+
+    Returns:
+        fxdata: Data object
+
+    """
+    # Initialize key variables
+    seconds_in_year = 3600 * 24 * 365
+    ts_stop = int(time.time())
+    ts_start = ts_stop - (years * seconds_in_year)
+
+    # Get data object for
+    fxdata = db_data.GetIDX(idx_pair, ts_start, ts_stop)
+
+    # Return
+    return fxdata
+
+
+def vector(fxdata, timestamp):
+    """Create a feature vector.
+
+    Args:
+        fxdata: Object of fxdata table
+        timestamp: Ending timestamp of data subset to be analyzed
+
+    Returns:
+        feature_vector: Feature vector
+
+    """
+    # Initialize key variables
+    feature_vector = []
+
+    # Start creating the vector
+    for period in [20, 40, 60]:
+        feature = Feature(fxdata, timestamp, period)
+
+        # Append feature to feature_vector
+        feature_vector.append(feature.max_high_percent())
+        feature_vector.append(feature.min_low_percent())
+        feature_vector.append(feature.mean_high_percent())
+        feature_vector.append(feature.mean_low_percent())
+        feature_vector.append(feature.max_atr_percent())
+        feature_vector.append(feature.min_atr_percent())
+        feature_vector.extend(feature.min_psycho())
+        feature_vector.extend(feature.max_psycho())
+
+    # Append for 200 moving average value
+    feature = Feature(fxdata, timestamp, 200)
+    feature_vector.append(feature.mean_high_percent())
+    feature_vector.append(feature.mean_low_percent())
+
+    # Return
+    return feature_vector
+
+
 def process(idx_pair, years=6):
     """Process data.
 
@@ -645,72 +684,127 @@ def process(idx_pair, years=6):
     """
     # Initialize key variables
     lookahead = 1
-    components = 20
+    components = 10
 
     # Get data object
-    data = FeatureVector(idx_pair, lookahead=lookahead, years=years)
-    feature_vectors = data.dump()
+    extract = Extract(idx_pair, lookahead=lookahead, years=years)
 
-    # Apply classifer to all feature vectors
-    linear = Linear(feature_vectors)
+    # Create linear accuracy object
+    linear = accuracy.Linear(extract)
 
-    # Assign values
-    classes_high = data.classes_high()
-    classes_low = data.classes_low()
-    klasses_high = data.classes_high(kessler=True)
-    klasses_low = data.classes_low(kessler=True)
+    # Create bayesian accuracy object
+    bayesian = accuracy.Bayesian(extract, components=components)
 
-    """
-    # Start predictions (high)
-    print('Predicting Highs')
-    predictions = []
-    for feature_vector in feature_vectors:
-        next_class = linear.prediction(feature_vector, klasses_high)
-        predictions.append(next_class)
-    predicted_high = np.asarray(predictions)
+    # Print linear results
+    print('\n')
 
-    # Start predictions (low)
-    print('Predicting Lows')
-    predictions = []
-    for feature_vector in feature_vectors:
-        next_class = linear.prediction(feature_vector, klasses_low)
-        predictions.append(next_class)
-    predicted_low = np.asarray(predictions)
+    print('Linear\n')
+    print('Higher High Predictive Value', linear.higherhighs())
+    print('Lower High Predictive Value', linear.lowerhighs())
+    print('Overall High Accuracy', linear.highs())
+    print('\n')
+    print('Higher Low Predictive Value', linear.higherlows())
+    print('Lower Low Predictive Value', linear.lowerlows())
+    print('Overall Low Accuracy', linear.lows())
 
-    # Confusion matrix
-    print('Confusion Matrix Calculation')
+    print('\n')
 
-    if lookahead > 1:
-        matrix_high = confusion_matrix(classes_high, predicted_high)
-        matrix_low = confusion_matrix(classes_low, predicted_low)
+    # Print Bayesian results
+    print('Bayesian\n')
+    print('Higher High Predictive Value', bayesian.higherhighs())
+    print('Lower High Predictive Value', bayesian.lowerhighs())
+    print('Overall High Accuracy', bayesian.highs())
+    print('\n')
+    print('Higher Low Predictive Value', bayesian.higherlows())
+    print('Lower Low Predictive Value', bayesian.lowerlows())
+    print('Overall Low Accuracy', bayesian.lows())
+    print('\n')
+
+    # Do prediction
+    fxdata = getdata(idx_pair, years=years)
+    timestamps = fxdata.timestamp()
+    last_timestamp = timestamps[-1]
+
+    # Create feature vector
+    feature_vector = vector(fxdata, last_timestamp)
+
+    # Get feature vectors for entire sample set
+    feature_vectors = extract.vectors()
+
+    # Get list of classes for feature vectors
+    klasses_high = extract.classes_high(kessler=True)
+    klasses_low = extract.classes_low(kessler=True)
+
+    #########################################################################
+    # Prediction using Bayesian
+    #########################################################################
+
+    # Process highs
+    pca_highs = pca.PCA(feature_vectors, klasses_high)
+    bayes_classifier = classifier.Bayesian(pca_highs, components=components)
+    prediction = bayes_classifier.classifier(feature_vector)
+
+    # Print prediction
+    if prediction == -1:
+        result = (
+            'Bayesian Prediction: Lower high, %.2f%% probability'
+            '') % (bayesian.lowerhighs() * 100)
+        print(result)
     else:
-        matrix_high = confusion_matrix(klasses_high, predicted_high)
-        matrix_low = confusion_matrix(klasses_low, predicted_low)
+        result = (
+            'Bayesian Prediction: Higher high, %.2f%% probability'
+            '') % (bayesian.higherhighs() * 100)
+        print(result)
 
-    pprint(matrix_high)
+    # Process lows
+    pca_lows = pca.PCA(feature_vectors, klasses_low)
+    bayes_classifier = classifier.Bayesian(pca_lows, components=components)
+    prediction = bayes_classifier.classifier(feature_vector)
 
-    pprint(matrix_low)
-    """
+    # Print prediction
+    if prediction == -1:
+        result = (
+            'Bayesian Prediction: Lower low, %.2f%% probability'
+            '') % (bayesian.lowerlows() * 100)
+        print(result)
+    else:
+        result = (
+            'Bayesian Prediction: Higher low, %.2f%% probability'
+            '') % (bayesian.lowerlows() * 100)
+        print(result)
 
-    # Run PCA analysis
-    print(('PCA Calculation: %s Components') % (components))
-    print('\nHighs')
-    pca_object = pca.PCA(feature_vectors, klasses_high)
-    bayes_classifier = classifier2d.Bayesian(
-        pca_object, components=components)
-    g_accuracy = bayes_classifier.accuracy()
-    for cls in [None, -1, 1]:
-        print(
-            ('Class %s: %.2f%%') % (cls, g_accuracy[cls])
-        )
+    #########################################################################
+    # Prediction using Linear
+    #########################################################################
 
-    print('\nLows')
-    pca_object = pca.PCA(feature_vectors, klasses_low)
-    bayes_classifier = classifier2d.Bayesian(
-        pca_object, components=components)
-    g_accuracy = bayes_classifier.accuracy()
-    for cls in [None, -1, 1]:
-        print(
-            ('Class %s: %.2f%%') % (cls, g_accuracy[cls])
-        )
+    linear_classifier = classifier.Linear(feature_vectors)
 
+    # Process highs
+    prediction = linear_classifier.prediction(feature_vector, klasses_high)
+
+    # Print prediction
+    if prediction == -1:
+        result = (
+            'Linear Prediction: Lower high, %.2f%% probability'
+            '') % (linear.lowerhighs() * 100)
+        print(result)
+    else:
+        result = (
+            'Linear Prediction: Higher high, %.2f%% probability'
+            '') % (linear.higherhighs() * 100)
+        print(result)
+
+    # Process lows
+    prediction = linear_classifier.prediction(feature_vector, klasses_low)
+
+    # Print prediction
+    if prediction == -1:
+        result = (
+            'Linear Prediction: Lower low, %.2f%% probability'
+            '') % (linear.lowerlows() * 100)
+        print(result)
+    else:
+        result = (
+            'Linear Prediction: Higher low, %.2f%% probability'
+            '') % (linear.lowerlows() * 100)
+        print(result)
