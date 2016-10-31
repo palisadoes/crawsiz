@@ -263,7 +263,7 @@ class Linear(object):
         # Make array available to rest of class
         self.data = kessler_array.tolist()
 
-    def classifier(self, classes):
+    def _classifier(self, classes):
         """Create binary linear classifier.
 
         Args:
@@ -278,8 +278,8 @@ class Linear(object):
         result = np.dot(pseudo, classes)
         return result
 
-    def prediction(self, feature_vector, classes):
-        """Predict the class of the vector.
+    def classifier(self, feature_vector, classes):
+        """Classify the feature vector.
 
         Args:
             feature_vector: Feature vector
@@ -294,7 +294,7 @@ class Linear(object):
         vector = np.hstack((ones, feature_vector))
 
         # Classify
-        classification = np.dot(vector, self.classifier(classes))
+        classification = np.dot(vector, self._classifier(classes))
 
         # Return
         result = kessler_to_number(classification)

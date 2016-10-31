@@ -46,14 +46,14 @@ class Linear(object):
         # Start predictions (high)
         predictions = []
         for feature_vector in feature_vectors:
-            next_class = linear.prediction(feature_vector, klasses_high)
+            next_class = linear.classifier(feature_vector, klasses_high)
             predictions.append(next_class)
         predicted_high = np.asarray(predictions)
 
         # Start predictions (low)
         predictions = []
         for feature_vector in feature_vectors:
-            next_class = linear.prediction(feature_vector, klasses_low)
+            next_class = linear.classifier(feature_vector, klasses_low)
             predictions.append(next_class)
         predicted_low = np.asarray(predictions)
 

@@ -9,9 +9,7 @@ import numpy as np
 
 # Import custom libraries
 from crawsiz.db import db_data
-from crawsiz.machine import accuracy
-from crawsiz.machine import pca
-from crawsiz.machine import classifier
+from crawsiz.main import report
 
 
 __author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
@@ -214,6 +212,23 @@ class Feature(object):
         # Return
         return result
 
+    def mean_volume_percent(self):
+        """Calculate the mean of volumes as percent of current volume.
+
+        Args:
+            None
+
+        Returns:
+            result: Mean of volumes as percentage of current volume.
+
+        """
+        # Initialize key variables
+        mean_value = sum(self._samples_volume()) / len(self._samples_volume())
+        result = mean_value / self._current_volume()
+
+        # Return
+        return result
+
     def _start_stop(self):
         """Get start / stop indexes for class.
 
@@ -291,6 +306,24 @@ class Feature(object):
         # Return
         return samples
 
+    def _samples_volume(self):
+        """Get samples of volumes to analyze.
+
+        Args:
+            None
+
+        Returns:
+            samples: Sample list
+
+        """
+        # Initialize key variables
+        values = self.fxdata.fxvolume()
+        (start, stop) = self._start_stop()
+        samples = values[start: stop]
+
+        # Return
+        return samples
+
     def _max_high(self):
         """Calculate the max of highs.
 
@@ -355,18 +388,18 @@ class Feature(object):
         # Return
         return result
 
-    def _mean_high(self):
-        """Calculate the mean of highs.
+    def _current_volume(self):
+        """Calculate the current volume.
 
         Args:
             None
 
         Returns:
-            result: mean of highs
+            result: current volume
 
         """
         # Initialize key variables
-        result = sum(self._samples_high()) / len(self._samples_high())
+        result = self._samples_volume()[-1]
 
         # Return
         return result
@@ -535,22 +568,48 @@ class Extract(object):
         self.feature_vectors = []
 
         # Get data object for
-        fxdata = getdata(idx_pair, years=years)
-        timestamps = fxdata.timestamp()
+        self._fxdata = getdata(idx_pair, years=years)
+        self._timestamp = self._fxdata.timestamp()
 
         # Create features
-        for timestamp in timestamps[199:-lookahead]:
+        for timestamp in self._timestamp[199:-lookahead]:
             # Append feature vector for this timestamp
             # to the list of feature vectors
-            feature_vector = vector(fxdata, timestamp)
+            feature_vector = vector(self._fxdata, timestamp)
             self.feature_vectors.append(feature_vector)
 
             # Get classification for this timestamp
-            classify = Classify(fxdata, timestamp, lookahead)
+            classify = Classify(self._fxdata, timestamp, lookahead)
             self.kessler_classes_high.append(classify.high())
             self.kessler_classes_low.append(classify.low())
             self.regular_classes_high.append(classify.high(kessler=False))
             self.regular_classes_low.append(classify.low(kessler=False))
+
+    def fxdata(self):
+        """Return fxdata.
+
+        Args:
+            None
+
+        Returns:
+            self._fxdata
+
+        """
+        # Return
+        return self._fxdata
+
+    def timestamp(self):
+        """Return list of timestamps matching rows in self.feature_vectors.
+
+        Args:
+            None
+
+        Returns:
+            self._timestamp
+
+        """
+        # Return
+        return self._timestamp
 
     def classes_high(self, kessler=False):
         """Method returning the high classifications of all feature vectors.
@@ -686,125 +745,11 @@ def process(idx_pair, years=6):
     lookahead = 1
     components = 10
 
-    # Get data object
-    extract = Extract(idx_pair, lookahead=lookahead, years=years)
+    # Create a report object
+    journal = report.Report(
+        idx_pair, years=years, lookahead=lookahead, components=components)
 
-    # Create linear accuracy object
-    linear = accuracy.Linear(extract)
-
-    # Create bayesian accuracy object
-    bayesian = accuracy.Bayesian(extract, components=components)
-
-    # Print linear results
-    print('\n')
-
-    print('Linear\n')
-    print('Higher High Predictive Value', linear.higherhighs())
-    print('Lower High Predictive Value', linear.lowerhighs())
-    print('Overall High Accuracy', linear.highs())
-    print('\n')
-    print('Higher Low Predictive Value', linear.higherlows())
-    print('Lower Low Predictive Value', linear.lowerlows())
-    print('Overall Low Accuracy', linear.lows())
-
-    print('\n')
-
-    # Print Bayesian results
-    print('Bayesian\n')
-    print('Higher High Predictive Value', bayesian.higherhighs())
-    print('Lower High Predictive Value', bayesian.lowerhighs())
-    print('Overall High Accuracy', bayesian.highs())
-    print('\n')
-    print('Higher Low Predictive Value', bayesian.higherlows())
-    print('Lower Low Predictive Value', bayesian.lowerlows())
-    print('Overall Low Accuracy', bayesian.lows())
-    print('\n')
-
-    # Do prediction
-    fxdata = getdata(idx_pair, years=years)
-    timestamps = fxdata.timestamp()
-    last_timestamp = timestamps[-1]
-
-    # Create feature vector
-    feature_vector = vector(fxdata, last_timestamp)
-
-    # Get feature vectors for entire sample set
-    feature_vectors = extract.vectors()
-
-    # Get list of classes for feature vectors
-    klasses_high = extract.classes_high(kessler=True)
-    klasses_low = extract.classes_low(kessler=True)
-
-    #########################################################################
-    # Prediction using Bayesian
-    #########################################################################
-
-    # Process highs
-    pca_highs = pca.PCA(feature_vectors, klasses_high)
-    bayes_classifier = classifier.Bayesian(pca_highs, components=components)
-    prediction = bayes_classifier.classifier(feature_vector)
-
-    # Print prediction
-    if prediction == -1:
-        result = (
-            'Bayesian Prediction: Lower high, %.2f%% probability'
-            '') % (bayesian.lowerhighs() * 100)
-        print(result)
-    else:
-        result = (
-            'Bayesian Prediction: Higher high, %.2f%% probability'
-            '') % (bayesian.higherhighs() * 100)
-        print(result)
-
-    # Process lows
-    pca_lows = pca.PCA(feature_vectors, klasses_low)
-    bayes_classifier = classifier.Bayesian(pca_lows, components=components)
-    prediction = bayes_classifier.classifier(feature_vector)
-
-    # Print prediction
-    if prediction == -1:
-        result = (
-            'Bayesian Prediction: Lower low, %.2f%% probability'
-            '') % (bayesian.lowerlows() * 100)
-        print(result)
-    else:
-        result = (
-            'Bayesian Prediction: Higher low, %.2f%% probability'
-            '') % (bayesian.lowerlows() * 100)
-        print(result)
-
-    #########################################################################
-    # Prediction using Linear
-    #########################################################################
-
-    linear_classifier = classifier.Linear(feature_vectors)
-
-    # Process highs
-    prediction = linear_classifier.prediction(feature_vector, klasses_high)
-
-    # Print prediction
-    if prediction == -1:
-        result = (
-            'Linear Prediction: Lower high, %.2f%% probability'
-            '') % (linear.lowerhighs() * 100)
-        print(result)
-    else:
-        result = (
-            'Linear Prediction: Higher high, %.2f%% probability'
-            '') % (linear.higherhighs() * 100)
-        print(result)
-
-    # Process lows
-    prediction = linear_classifier.prediction(feature_vector, klasses_low)
-
-    # Print prediction
-    if prediction == -1:
-        result = (
-            'Linear Prediction: Lower low, %.2f%% probability'
-            '') % (linear.lowerlows() * 100)
-        print(result)
-    else:
-        result = (
-            'Linear Prediction: Higher low, %.2f%% probability'
-            '') % (linear.lowerlows() * 100)
-        print(result)
+    # Create report
+    print(journal.performance())
+    print(journal.bayesian())
+    print(journal.linear())

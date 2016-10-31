@@ -185,18 +185,6 @@ class KnownValues(unittest.TestCase):
         result = self.testobj._samples_low()
         self.assertEqual(result, expected)
 
-    def test__mean_high(self):
-        """Testing function _mean_high."""
-        # Define the expected
-        (start, stop) = _start_stop(
-            self.timestamps, self.timestamp, self.periods)
-        highs = self.fxhigh[start: stop]
-        expected = sum(highs) / len(highs)
-
-        # Compare with test results
-        result = self.testobj._mean_high()
-        self.assertEqual(result, expected)
-
     def test__current_high(self):
         """Testing function _current_high."""
         # Define the expected
