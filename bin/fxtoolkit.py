@@ -44,8 +44,8 @@ This processes XML data from FXCM http:// feeds.
 
     # Autoingest stuff
     if cli_args.mode == 'autoingest':
-        _autoingest()
-        _process()
+        idx_ingested_list = _autoingest()
+        _process(idx_ingested_list)
 
     # Process data
     if cli_args.mode == 'process':
@@ -59,7 +59,7 @@ def _autoingest():
         None
 
     Returns:
-        None
+        idx_ingested: List of indexes that were updated
 
     """
     # Get config
@@ -67,6 +67,8 @@ def _autoingest():
 
     # Initialize filenames
     filepaths = []
+    pairs = []
+    idx_ingested = []
 
     # Get list of files in ingest directory
     for filename in os.listdir(config.ingest_directory()):
@@ -87,6 +89,7 @@ def _autoingest():
 
         # Append filepath to list
         filepaths.append(filepath)
+        pairs.append(filecheck.pair())
 
     # Create a pool of sub process resources
     with Pool(processes=5) as pool:
@@ -96,12 +99,25 @@ def _autoingest():
     # Wait for all the processes to end
     pool.join()
 
+    # Get a list of all pair indices in the database
+    idx_all = db_pair.idx_all()
+    for idx in idx_all:
+        db_object = db_pair.GetIDX(idx)
+        next_pair = db_object.pair()
+        if next_pair in pairs:
+            idx_ingested.append(idx)
 
-def _process():
+    # Return
+    if bool(idx_ingested) is False:
+        idx_ingested = None
+    return idx_ingested
+
+
+def _process(idx_ingested_list=None):
     """Process crosses in database.
 
     Args:
-        None
+        idx_ingested_list: List of pair indices that were ingested.
 
     Returns:
         None
@@ -113,7 +129,10 @@ def _process():
     years = 6
 
     # Process data
-    indices = db_pair.idx_all()
+    if idx_ingested_list is None:
+        indices = db_pair.idx_all()
+    else:
+        indices = idx_ingested_list
     for idx in indices:
         feature.process(
             idx, years=years, lookahead=lookahead, components=components)
