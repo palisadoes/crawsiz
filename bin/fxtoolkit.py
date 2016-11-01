@@ -135,17 +135,14 @@ def _process(idx_ingested_list=None):
     else:
         indices = idx_ingested_list
     for idx in indices:
-        # argument_list.append(
-        #     (idx, years, lookahead, components)
-        # )
         argument_list.append(
-            (idx)
+            (idx, years, lookahead, components)
         )
 
     # Create a pool of sub process resources
     with Pool(processes=5) as pool:
         # Create sub processes from the pool
-        pool.map(feature.process, argument_list)
+        pool.map(_pool_wrapper, argument_list)
 
     # Wait for all the processes to end
     pool.join()
