@@ -215,7 +215,7 @@ class Ingest(object):
                 r_volume = int(line[6])
 
                 # Convert date to timestamp
-                timestamp = general.gmt_timestamp(
+                timestamp = general.utc_timestamp(
                     datetime.strptime(r_date, "%Y.%m.%d %H:%M")
                     )
 

@@ -9,6 +9,7 @@ from datetime import datetime
 from crawsiz.machine import accuracy
 from crawsiz.machine import prediction
 from crawsiz.main import feature
+from crawsiz.utils import general
 from crawsiz.db import db_pair
 
 
@@ -45,8 +46,7 @@ class Report(object):
 
         # Get timestamp of last entry
         timestamp = extract.timestamp()[-1]
-        self.date = datetime.fromtimestamp(
-            timestamp).strftime('%Y-%m-%d %H:%M')
+        self.date = general.utc_timestring(timestamp)
 
         # Create linear accuracy object
         self._linear = accuracy.Linear(extract)

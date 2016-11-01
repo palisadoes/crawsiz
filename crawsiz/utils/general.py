@@ -8,6 +8,7 @@ import time
 import subprocess
 import locale
 import hashlib
+from datetime import datetime
 from pytz import timezone
 from dateutil import tz
 
@@ -410,11 +411,11 @@ def search_file(filename):
     return result
 
 
-def gmt_timestamp(datetime_object):
-    """Convert a datetime object to its equivalent GMT timestamp.
+def utc_timestamp(datetime_object):
+    """Convert a datetime object to its equivalent UTC timestamp.
 
     Args:
-        datetime_object: Datetime object
+        datetime_object: Datetime object created using a UTC time string
 
     Returns:
         timestamp: Epoch timestamp
@@ -429,3 +430,26 @@ def gmt_timestamp(datetime_object):
 
     # Return
     return timestamp
+
+
+def utc_timestring(timestamp, formatting='%Y-%m-%d %H:%M'):
+    """Convert a UTC timestamp to its equivalent UTC time string.
+
+    Args:
+        timestamp: UTC timestamp
+        formatting: strftime formatting string
+
+    Returns:
+        result: Time string
+
+    """
+    # Initialize key variables
+    datetime_object = datetime.fromtimestamp(timestamp)
+
+    # Convert to string
+    datetime_object_utc = datetime_object.replace(tzinfo=timezone('UTC'))
+    datetime_object_local = datetime_object_utc.astimezone(tz.tzutc())
+    result = datetime_object_local.strftime(formatting)
+
+    # Return
+    return result
