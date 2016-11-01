@@ -5,6 +5,7 @@ import sys
 from collections import defaultdict
 import math
 import operator
+from pprint import pprint
 
 # Non-standard python imports
 import numpy as np
@@ -29,7 +30,7 @@ class PCA(object):
 
         Args:
             feature_vectors: (X, Y) Numpy array of feature vectors
-            classes: (y,) Numpy array of corresponding classes
+            classes: (y, 1) Numpy array of corresponding classes
 
         """
         # Initialize key variables
@@ -425,7 +426,7 @@ class PCA(object):
 
         # Return
         np_classes = np.asarray(classes)
-        return (np_classes, result)
+        return (np.vstack(np_classes), result)
 
     def eigen_vector_check(self):
         """Verify that the eigen vectors are calcualted OK.

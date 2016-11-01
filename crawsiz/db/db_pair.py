@@ -225,3 +225,32 @@ def idx_exists(idx):
 
     # Return
     return found
+
+
+def idx_all():
+    """Return list of all pair idx values.
+
+    Args:
+        None
+
+    Returns:
+        data: List of indices
+
+    """
+    # Initialize key variables
+    data = []
+
+    # Establish a database session
+    database = db.Database()
+    session = database.session()
+    result = session.query(Pair.idx)
+
+    # Massage data
+    for instance in result:
+        data.append(instance.idx)
+
+    # Return the session to the database pool after processing
+    session.close()
+
+    # Return
+    return data

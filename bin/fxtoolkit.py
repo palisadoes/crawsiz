@@ -5,21 +5,18 @@ Test
 
 """
 
+# Standard imports
 import os
-import sys
-import re
 import time
+from pprint import pprint
+from multiprocessing import Pool
 
 # Import crawsiz libraries
 from crawsiz.main import ingest
 from crawsiz.main import feature
 from crawsiz.utils import configuration
 from crawsiz.utils import cli
-from crawsiz.utils import general
-from crawsiz.utils import log
-from crawsiz.db import db
 from crawsiz.db import db_pair
-from crawsiz.db.db_orm import Pair
 
 
 __author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
@@ -51,6 +48,9 @@ This processes XML data from FXCM http:// feeds.
         # Get config
         config = configuration.Config()
 
+        # Initialize filenames
+        filepaths = []
+
         # Get list of files in ingest directory
         for filename in os.listdir(config.ingest_directory()):
             # Get next filename from list
@@ -68,14 +68,88 @@ This processes XML data from FXCM http:// feeds.
             if filecheck.valid() is False:
                 continue
 
-            # Ingest data
-            ingest_object = ingest.Ingest(filepath)
-            ingest_object.ingest()
+            # Append filepath to list
+            filepaths.append(filepath)
+
+        # Create a pool of sub process resources
+        with Pool(processes=5) as pool:
+            # Create sub processes from the pool
+            pool.map(ingest.ingest, filepaths)
+
+        # Wait for all the processes to end
+        pool.join()
 
     # Process data
     if cli_args.mode == 'process':
+        # Initialize key variables
+        lookahead = 1
+        components = 10
+        years = 6
+
         # Process data
-        feature.process(1)
+        indices = db_pair.idx_all()
+        for idx in indices:
+            feature.process(idx, years=6, lookahead=1, components=10)
+
+        # Create index page when all done
+        _index()
+
+
+def _pool_wrapper(argument_list):
+    """Wrapper function to unpack arguments before calling the real function.
+
+    Args:
+        argument_list: A list of tuples of arguments to be
+            provided to "feature.process" function
+
+    Returns:
+        Nothing
+
+    """
+    return feature.process(*argument_list)
+
+
+def _index():
+    """Create index.html page.
+
+    Args:
+        None
+
+    Returns:
+        None.
+
+    """
+    # Initialize key variables
+    config = configuration.Config()
+    directory = config.web_directory()
+    filename = ('%s/index.html') % (directory)
+    crosses = []
+    links = ''
+
+    # Get list of pair indexes
+    indices = db_pair.idx_all()
+    for idx in indices:
+        crosses.append(db_pair.GetIDX(idx).pair())
+
+    # Create links on index page
+    for cross in sorted(crosses):
+        links = (
+            '%s<p><a href="%s.html">%s</a></p>\n'
+            '') % (links, cross.lower(), cross.upper())
+
+    # Create HTML
+    html = ("""\
+<html>
+<head><title>Crawsiz</title></head>
+<body>
+<h1>Crawsiz</h1>
+%s
+</html></body>
+""") % (links)
+
+    # Write HTML to file
+    with open(filename, 'w') as f_handle:
+        f_handle.write(html)
 
 
 if __name__ == '__main__':

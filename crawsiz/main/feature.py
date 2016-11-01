@@ -9,7 +9,9 @@ import numpy as np
 
 # Import custom libraries
 from crawsiz.db import db_data
+from crawsiz.db import db_pair
 from crawsiz.main import report
+from crawsiz.utils import configuration
 
 
 __author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
@@ -730,26 +732,42 @@ def vector(fxdata, timestamp):
     return feature_vector
 
 
-def process(idx_pair, years=6):
+def process(idx_pair, years=6, lookahead=1, components=10):
     """Process data.
 
     Args:
         idx_pair: Index of pair
         years: Number of years of data to process
+        components: Number of principal components to analyze
+        lookahead:
 
     Returns:
         None
 
     """
-    # Initialize key variables
+    years = 6
     lookahead = 1
     components = 10
+
+    # Get pair as string
+    cross_object = db_pair.GetIDX(idx_pair)
+    cross = cross_object.pair().lower()
+
+    # Get directory for web output
+    config = configuration.Config()
+    directory = config.web_directory()
+    filepath = ('%s/%s.html') % (directory, cross)
 
     # Create a report object
     journal = report.Report(
         idx_pair, years=years, lookahead=lookahead, components=components)
 
     # Create report
+    html = journal.html()
+    with open(filepath, 'w') as f_handle:
+        f_handle.write(html)
+
+    # Print output
     print(journal.performance())
     print(journal.bayesian())
     print(journal.linear())

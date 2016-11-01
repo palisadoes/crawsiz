@@ -208,3 +208,44 @@ Overall Low Predictive Value  : %.2f%%\
         # Return
         output = ('\n%s\n\n%s') % (linear_output, bayesian_output)
         return output
+
+    def html(self):
+        """Provide report as HTML.
+
+        Args:
+            None
+
+        Returns:
+            output: Full report in HTML
+
+        """
+        # Initialize key variables
+        output = ("""\
+<html>
+<head><title>%s</title></head>
+<body>
+<font face="courier">
+%s
+%s
+%s
+</font>
+</html></body>
+""") % (self.pair, _text(self.performance()),
+        _text(self.linear()), _text(self.bayesian()))
+
+        # Return
+        return output
+
+def _text(lines):
+    """Convert text to text like HTML blocks
+
+    Args:
+        None
+
+    Returns:
+        output: Full report in HTML
+
+    """
+    # Initialize key variables
+    output = ('<p>%s</p>') % (lines.replace('\n', '<br>\n'))
+    return output

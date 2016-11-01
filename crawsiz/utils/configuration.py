@@ -193,6 +193,33 @@ class Config(object):
         # Return
         return value
 
+    def web_directory(self):
+        """Determine the web_directory.
+
+        Args:
+            None
+
+        Returns:
+            value: configured web_directory
+
+        """
+        # Get parameter
+        key = 'general'
+        sub_key = 'web_directory'
+
+        # Get result
+        value = _key_sub_key(key, sub_key, self.config_dict)
+
+        # Determine whether path exists
+        if os.path.isdir(value) is False:
+            log_message = (
+                'web_directory: "%s" '
+                'in configuration doesn\'t exist!') % (value)
+            log.log2die(1007, log_message)
+
+        # Return
+        return value
+
     def db_name(self):
         """Get db_name.
 

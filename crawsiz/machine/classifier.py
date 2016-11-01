@@ -8,7 +8,7 @@ import math
 import numpy as np
 
 # Our library imports
-from machine import pca
+from crawsiz.machine import pca
 
 
 class Bayesian(object):
@@ -41,11 +41,13 @@ class Bayesian(object):
         self.pca_object = pca_object
 
         # Convert pca_object data to data acceptable by the Histogram2D class
-        self.data = _get_data(pca_object, components=self.components)
         self.class_list = self.pca_object.classes()
 
         # Get new PCA object for principal components
-        self.pca_new = pca.PCA(self.data)
+        (principal_classes,
+         principal_components) = pca_object.principal_components(
+             components=components)
+        self.pca_new = pca.PCA(principal_components, principal_classes)
 
     def classes(self):
         """Get the classes.
@@ -328,32 +330,3 @@ def kessler_to_number(classification):
         result = values.index(maximum)
 
     return result
-
-
-def _get_data(pca_object, components=2):
-    """Method for intializing the class.
-
-    Args:
-        classes: List of classes to process
-        pca_object: PCA class object
-
-    Returns:
-        None
-
-    """
-    # Initialize key variables
-    data = []
-
-    # Convert pca_object data to data acceptable by the Histogram2D class
-    (principal_classes,
-     principal_components) = pca_object.principal_components(
-         components=components)
-
-    for idx, cls in enumerate(principal_classes):
-        dimensions = principal_components[idx, :]
-        data.append(
-            (cls, dimensions.tolist())
-        )
-
-    # Return
-    return data

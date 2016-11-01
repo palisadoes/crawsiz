@@ -323,3 +323,18 @@ def _archive_ingest_file(filepath):
 
     # Return zip filename
     return zip_filename
+
+
+def ingest(filepath):
+    """Ingest file.
+
+    Args:
+        filepath: Name of file to ingest
+
+    Returns:
+        None
+
+    """
+    # Initialize key variables
+    ingest_object = Ingest(filepath)
+    ingest_object.ingest()

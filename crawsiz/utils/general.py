@@ -8,6 +8,7 @@ import time
 import subprocess
 import locale
 import hashlib
+import calendar
 
 # Pip libraries
 import yaml
@@ -419,7 +420,7 @@ def gmt_timestamp(datetime_object):
 
     """
     # Initialize key variables
-    gmt_offset = 28800
+    gmt_offset = calendar.timegm(time.gmtime()) - calendar.timegm(time.localtime())
 
     # Start decode
     timestamp = int(time.mktime(datetime_object.utctimetuple())) - gmt_offset
