@@ -8,7 +8,6 @@ Test
 # Standard imports
 import os
 import time
-from pprint import pprint
 from multiprocessing import Pool
 
 # Import crawsiz libraries
@@ -45,54 +44,82 @@ This processes XML data from FXCM http:// feeds.
 
     # Autoingest stuff
     if cli_args.mode == 'autoingest':
-        # Get config
-        config = configuration.Config()
-
-        # Initialize filenames
-        filepaths = []
-
-        # Get list of files in ingest directory
-        for filename in os.listdir(config.ingest_directory()):
-            # Get next filename from list
-            filepath = ('%s/%s') % (config.ingest_directory(), filename)
-
-            # Get age of file
-            age = int(time.time() - os.path.getmtime(filepath))
-
-            # Only proceed if file is old enough
-            if age < 15:
-                continue
-
-            # Don't process invalid files
-            filecheck = ingest.Valid(filepath)
-            if filecheck.valid() is False:
-                continue
-
-            # Append filepath to list
-            filepaths.append(filepath)
-
-        # Create a pool of sub process resources
-        with Pool(processes=5) as pool:
-            # Create sub processes from the pool
-            pool.map(ingest.ingest, filepaths)
-
-        # Wait for all the processes to end
-        pool.join()
+        _autoingest()
+        _process()
 
     # Process data
     if cli_args.mode == 'process':
-        # Initialize key variables
-        lookahead = 1
-        components = 10
-        years = 6
+        _process()
 
-        # Process data
-        indices = db_pair.idx_all()
-        for idx in indices:
-            feature.process(idx, years=6, lookahead=1, components=10)
 
-        # Create index page when all done
-        _index()
+def _autoingest():
+    """Autoingest data.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    """
+    # Get config
+    config = configuration.Config()
+
+    # Initialize filenames
+    filepaths = []
+
+    # Get list of files in ingest directory
+    for filename in os.listdir(config.ingest_directory()):
+        # Get next filename from list
+        filepath = ('%s/%s') % (config.ingest_directory(), filename)
+
+        # Get age of file
+        age = int(time.time() - os.path.getmtime(filepath))
+
+        # Only proceed if file is old enough
+        if age < 15:
+            continue
+
+        # Don't process invalid files
+        filecheck = ingest.Valid(filepath)
+        if filecheck.valid() is False:
+            continue
+
+        # Append filepath to list
+        filepaths.append(filepath)
+
+    # Create a pool of sub process resources
+    with Pool(processes=5) as pool:
+        # Create sub processes from the pool
+        pool.map(ingest.ingest, filepaths)
+
+    # Wait for all the processes to end
+    pool.join()
+
+
+def _process():
+    """Process crosses in database.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    """
+    # Initialize key variables
+    lookahead = 1
+    components = 10
+    years = 6
+
+    # Process data
+    indices = db_pair.idx_all()
+    for idx in indices:
+        feature.process(
+            idx, years=years, lookahead=lookahead, components=components)
+
+    # Create index page when all done
+    _index()
 
 
 def _pool_wrapper(argument_list):

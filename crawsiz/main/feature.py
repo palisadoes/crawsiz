@@ -768,6 +768,6 @@ def process(idx_pair, years=6, lookahead=1, components=10):
         f_handle.write(html)
 
     # Print output
-    print(journal.performance())
-    print(journal.bayesian())
-    print(journal.linear())
+    # print(journal.performance())
+    # print(journal.bayesian())
+    # print(journal.linear())

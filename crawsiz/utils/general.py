@@ -8,7 +8,8 @@ import time
 import subprocess
 import locale
 import hashlib
-import calendar
+from pytz import timezone
+from dateutil import tz
 
 # Pip libraries
 import yaml
@@ -420,10 +421,11 @@ def gmt_timestamp(datetime_object):
 
     """
     # Initialize key variables
-    gmt_offset = calendar.timegm(time.gmtime()) - calendar.timegm(time.localtime())
+    datetime_object_utc = datetime_object.replace(tzinfo=timezone('UTC'))
+    datetime_object_local = datetime_object_utc.astimezone(tz.tzlocal())
 
-    # Start decode
-    timestamp = int(time.mktime(datetime_object.utctimetuple())) - gmt_offset
+    # Convert to timestamp
+    timestamp = int(time.mktime(datetime_object_local.timetuple()))
 
     # Return
     return timestamp

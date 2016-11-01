@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 import zipfile
 import shutil
+import pytz
 
 # Append custom application libraries
 from crawsiz.utils import configuration

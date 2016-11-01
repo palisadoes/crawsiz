@@ -224,11 +224,9 @@ Overall Low Predictive Value  : %.2f%%\
 <html>
 <head><title>%s</title></head>
 <body>
-<font face="courier">
 %s
 %s
 %s
-</font>
 </html></body>
 """) % (self.pair, _text(self.performance()),
         _text(self.linear()), _text(self.bayesian()))
@@ -247,5 +245,8 @@ def _text(lines):
 
     """
     # Initialize key variables
-    output = ('<p>%s</p>') % (lines.replace('\n', '<br>\n'))
+    output = (
+        '<p style="font-family:courier">%s</p>'
+        '') % (lines.replace('\n', '<br>\n'))
+    output = output.replace('  ', '&nbsp;&nbsp;')
     return output
