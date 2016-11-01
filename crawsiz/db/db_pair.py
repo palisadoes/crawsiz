@@ -45,6 +45,9 @@ class GetIDX(object):
         result = session.query(Pair).filter(
             Pair.idx == idx_pair)
 
+        # Return the session to the database pool after processing
+        session.close()
+
         # Massage data
         if result.count() == 1:
             for instance in result:
@@ -54,9 +57,6 @@ class GetIDX(object):
         else:
             log_message = ('Pair IDX %s not found.') % (idx_pair)
             log.log2die(1035, log_message)
-
-        # Return the session to the database pool after processing
-        session.close()
 
     def pair(self):
         """Get pair value.
@@ -120,6 +120,9 @@ class GetPair(object):
         session = database.session()
         result = session.query(Pair).filter(Pair.pair == value)
 
+        # Return the session to the database pool after processing
+        session.close()
+
         # Massage data
         if result.count() == 1:
             for instance in result:
@@ -129,9 +132,6 @@ class GetPair(object):
         else:
             log_message = ('pair %s not found.') % (value)
             log.log2die(1042, log_message)
-
-        # Return the session to the database pool after processing
-        session.close()
 
     def idx(self):
         """Get idx value.
@@ -181,15 +181,15 @@ def pair_exists(pair):
     session = database.session()
     result = session.query(Pair.pair).filter(Pair.pair == value)
 
+    # Return the session to the database pool after processing
+    session.close()
+
     # Massage data
     if result.count() == 1:
         for instance in result:
             _ = instance.pair
             break
         found = True
-
-    # Return the session to the database pool after processing
-    session.close()
 
     # Return
     return found
@@ -213,15 +213,15 @@ def idx_exists(idx):
     session = database.session()
     result = session.query(Pair.idx).filter(Pair.idx == idx)
 
+    # Return the session to the database pool after processing
+    session.close()
+
     # Massage data
     if result.count() == 1:
         for instance in result:
             _ = instance.idx
             break
         found = True
-
-    # Return the session to the database pool after processing
-    session.close()
 
     # Return
     return found
@@ -245,12 +245,12 @@ def idx_all():
     session = database.session()
     result = session.query(Pair.idx)
 
+    # Return the session to the database pool after processing
+    session.close()
+
     # Massage data
     for instance in result:
         data.append(instance.idx)
-
-    # Return the session to the database pool after processing
-    session.close()
 
     # Return
     return data

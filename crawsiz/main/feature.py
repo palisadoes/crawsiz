@@ -745,10 +745,6 @@ def process(idx_pair, years=6, lookahead=1, components=10):
         None
 
     """
-    years = 6
-    lookahead = 1
-    components = 10
-
     # Get pair as string
     cross_object = db_pair.GetIDX(idx_pair)
     cross = cross_object.pair().lower()
@@ -766,8 +762,3 @@ def process(idx_pair, years=6, lookahead=1, components=10):
     html = journal.html()
     with open(filepath, 'w') as f_handle:
         f_handle.write(html)
-
-    # Print output
-    # print(journal.performance())
-    # print(journal.bayesian())
-    # print(journal.linear())

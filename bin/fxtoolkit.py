@@ -127,6 +127,7 @@ def _process(idx_ingested_list=None):
     lookahead = 1
     components = 10
     years = 6
+    argument_list = []
 
     # Process data
     if idx_ingested_list is None:
@@ -134,8 +135,20 @@ def _process(idx_ingested_list=None):
     else:
         indices = idx_ingested_list
     for idx in indices:
-        feature.process(
-            idx, years=years, lookahead=lookahead, components=components)
+        # argument_list.append(
+        #     (idx, years, lookahead, components)
+        # )
+        argument_list.append(
+            (idx)
+        )
+
+    # Create a pool of sub process resources
+    with Pool(processes=5) as pool:
+        # Create sub processes from the pool
+        pool.map(feature.process, argument_list)
+
+    # Wait for all the processes to end
+    pool.join()
 
     # Create index page when all done
     _index()
