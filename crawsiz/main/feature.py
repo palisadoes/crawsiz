@@ -3,6 +3,7 @@
 # Standard imports
 import time
 import decimal
+from random import randint
 
 # Non standard imports
 import numpy as np
@@ -568,6 +569,7 @@ class Extract(object):
         self.regular_classes_high = []
         self.regular_classes_low = []
         self.feature_vectors = []
+        self._idx_pair = idx_pair
 
         # Get data object for
         self._fxdata = getdata(idx_pair, years=years)
@@ -599,6 +601,19 @@ class Extract(object):
         """
         # Return
         return self._fxdata
+
+    def idx_pair(self):
+        """Return idx_pair.
+
+        Args:
+            None
+
+        Returns:
+            self._idx_pair
+
+        """
+        # Return
+        return self._idx_pair
 
     def timestamp(self):
         """Return list of timestamps matching rows in self.feature_vectors.
@@ -745,6 +760,9 @@ def process(idx_pair, years=6, lookahead=1, components=10):
         None
 
     """
+    # Sleep a random amount of time
+    time.sleep(randint(0, 10))
+
     # Get pair as string
     cross_object = db_pair.GetIDX(idx_pair)
     cross = cross_object.pair().lower()
