@@ -1,0 +1,15 @@
+Updating table
+==============
+Delete prediction table entries for cross
+For each timestamp, create a feature vector
+Get prediction for each timestamp
+Update prediction table
+
+Creating report
+===============
+Get list of timestamps for 200 most recent days
+Get predictions from database
+Convert prediction to list of tuples
+Create HTML table of predictions
+
+
