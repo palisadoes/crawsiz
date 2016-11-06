@@ -41,21 +41,27 @@ class Report(object):
             None
 
         """
+        # Initialize key variables
+        self.components = components
+
         # Get data object
-        extract = feature.Extract(idx_pair, lookahead=lookahead, years=years)
+        self.extract = feature.Extract(
+            idx_pair, lookahead=lookahead, years=years)
 
         # Get timestamp of last entry
-        timestamp = extract.timestamp()[-1]
+        timestamp = self.extract.timestamps()[-1]
         self.date = general.utc_timestring(timestamp)
 
         # Create linear accuracy object
-        self._linear = accuracy.Linear(extract)
+        self._linear = accuracy.Linear(self.extract)
 
         # Create bayesian accuracy object
-        self._bayesian = accuracy.Bayesian(extract, components=components)
+        self._bayesian = accuracy.Bayesian(
+            self.extract, components=self.components)
 
-        # Do prediction
-        self.guess = prediction.Prediction(extract, components=components)
+        # Do prediction based on last entry in extract
+        self.guess = prediction.Tomorrow(
+            self.extract, components=self.components)
 
         # Get pair as string
         cross = db_pair.GetIDX(idx_pair)
@@ -233,6 +239,61 @@ Overall Low Predictive Value  : %.2f%%\
 
         # Return
         return output
+
+    def _prediction_history(self):
+        """Provide prediction history.
+
+        Args:
+            None
+
+        Returns:
+            history: List of tuples
+
+        """
+        # Initialize key variables
+        history = []
+        fxdata = self.extract.fxdata()
+
+        # Get predictions
+        for timestamp in self.extract.timestamps():
+            feature_vector = feature.vector(fxdata, timestamp)
+            guess = prediction.BlackBox(
+                self.extract, components=self.components)
+
+            # Get bayesian predictions
+            if guess.high(feature_vector, bayesian=True) < 0:
+                bayesian_high = 'Lower High'
+            else:
+                bayesian_high = 'Higher High'
+
+            if guess.low(feature_vector, bayesian=True) < 0:
+                bayesian_low = 'Lower Low'
+            else:
+                bayesian_low = 'Higher Low'
+
+            # Get linear predictions
+            if guess.high(feature_vector, bayesian=False) < 0:
+                linear_high = 'Lower High'
+            else:
+                linear_high = 'Higher High'
+
+            if guess.low(feature_vector, bayesian=False) < 0:
+                linear_low = 'Lower Low'
+            else:
+                linear_low = 'Higher Low'
+
+            # Append predictions to history
+            history.append(
+                (timestamp,
+                 bayesian_high,
+                 linear_high,
+                 bayesian_low,
+                 linear_low)
+            )
+
+        # Return
+        return history
+
 
 def _text(lines):
     """Convert text to text like HTML blocks

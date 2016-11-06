@@ -569,14 +569,15 @@ class Extract(object):
         self.regular_classes_high = []
         self.regular_classes_low = []
         self.feature_vectors = []
+        self._timestamps = []
         self._idx_pair = idx_pair
 
         # Get data object for
         self._fxdata = getdata(idx_pair, years=years)
-        self._timestamp = self._fxdata.timestamp()
+        timestamps = self._fxdata.timestamp()
 
         # Create features
-        for timestamp in self._timestamp[199:-lookahead]:
+        for timestamp in timestamps[199:-lookahead]:
             # Append feature vector for this timestamp
             # to the list of feature vectors
             feature_vector = vector(self._fxdata, timestamp)
@@ -588,6 +589,9 @@ class Extract(object):
             self.kessler_classes_low.append(classify.low())
             self.regular_classes_high.append(classify.high(kessler=False))
             self.regular_classes_low.append(classify.low(kessler=False))
+
+            # Append timestamp to array
+            self._timestamps.append(timestamp)
 
     def fxdata(self):
         """Return fxdata.
@@ -615,18 +619,18 @@ class Extract(object):
         # Return
         return self._idx_pair
 
-    def timestamp(self):
+    def timestamps(self):
         """Return list of timestamps matching rows in self.feature_vectors.
 
         Args:
             None
 
         Returns:
-            self._timestamp
+            self._timestamps
 
         """
         # Return
-        return self._timestamp
+        return self._timestamps
 
     def classes_high(self, kessler=False):
         """Method returning the high classifications of all feature vectors.
