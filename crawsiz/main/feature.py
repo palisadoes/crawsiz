@@ -784,7 +784,7 @@ def process(idx_pair, years=6, lookahead=1, components=10):
         idx_pair, lookahead=lookahead, years=years)
 
     # Update predictions in database
-    # _update_db_predictions(extract, components=components)
+    _update_db_predictions(extract, components=components)
 
     # Create a report object
     journal = report.Report(extract, components=components)
@@ -811,7 +811,7 @@ def _update_db_predictions(extract, components=10):
     fxdata = extract.fxdata()
     idx_pair = extract.idx_pair()
     all_timestamps = sorted(extract.timestamps())
-    timestamps = all_timestamps[-200: -1]
+    timestamps = all_timestamps[-201: -1]
 
     # Delete all entries for this pair
     database = db.Database()
