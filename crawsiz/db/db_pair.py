@@ -46,7 +46,7 @@ class GetIDX(object):
             Pair.idx == idx_pair)
 
         # Return the session to the database pool after processing
-        session.close()
+        database.close()
 
         # Massage data
         if result.count() == 1:
@@ -121,7 +121,7 @@ class GetPair(object):
         result = session.query(Pair).filter(Pair.pair == value)
 
         # Return the session to the database pool after processing
-        session.close()
+        database.close()
 
         # Massage data
         if result.count() == 1:
@@ -182,7 +182,7 @@ def pair_exists(pair):
     result = session.query(Pair.pair).filter(Pair.pair == value)
 
     # Return the session to the database pool after processing
-    session.close()
+    database.close()
 
     # Massage data
     if result.count() == 1:
@@ -214,7 +214,7 @@ def idx_exists(idx):
     result = session.query(Pair.idx).filter(Pair.idx == idx)
 
     # Return the session to the database pool after processing
-    session.close()
+    database.close()
 
     # Massage data
     if result.count() == 1:
@@ -246,7 +246,7 @@ def idx_all():
     result = session.query(Pair.idx)
 
     # Return the session to the database pool after processing
-    session.close()
+    database.close()
 
     # Massage data
     for instance in result:

@@ -63,7 +63,7 @@ class GetIDX(object):
             Data.idx_pair == idx)).order_by(Data.timestamp)
 
         # Return the session to the database pool after processing
-        session.close()
+        database.close()
 
         # Massage data
         for instance in result:

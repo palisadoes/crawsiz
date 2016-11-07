@@ -50,7 +50,7 @@ class GetPrediction(object):
             Prediction.timestamp == timestamp))
 
         # Return the session to the database pool after processing
-        session.close()
+        database.close()
 
         # Massage data
         if result.count() == 1:
@@ -167,7 +167,7 @@ def prediction_exists(idx_pair, timestamp):
         found = True
 
     # Return the session to the database pool after processing
-    session.close()
+    database.close()
 
     # Return
     return found

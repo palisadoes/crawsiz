@@ -73,7 +73,7 @@ class Database(object):
             log.log2die(error_code, log_message)
 
         # Disconnect from server
-        session.close()
+        self.close()
 
         return query_results
 
@@ -127,7 +127,7 @@ class Database(object):
             log.log2die(error_code, log_message)
 
         # disconnect from server
-        session.close()
+        self.close()
 
     def add_all(self, data_list, error_code, die=True):
         """Do a database modification.
@@ -178,13 +178,13 @@ class Database(object):
                 log.log2warn(error_code, log_message)
 
         # disconnect from server
-        session.close()
+        self.close()
 
         # Return
         return success
 
     def session(self):
-        """Return a session to the database pool.
+        """Get a session from the database pool.
 
         Args:
             None
@@ -196,6 +196,19 @@ class Database(object):
         # Initialize key variables
         db_session = self.pool()
         return db_session
+
+    def close(self):
+        """Return a session to the database pool.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        """
+        # Return session
+        self.pool.remove()
 
     def commit(self, session, error_code):
         """Do a database modification.
@@ -225,7 +238,7 @@ class Database(object):
             log.log2die(error_code, log_message)
 
         # disconnect from server
-        session.close()
+        self.close()
 
     def add(self, record, error_code):
         """Add a record to the database.
@@ -259,7 +272,7 @@ class Database(object):
             log.log2die(error_code, log_message)
 
         # disconnect from server
-        session.close()
+        self.close()
 
 
 def connectivity():
@@ -287,7 +300,7 @@ def connectivity():
     except:
         pass
 
-    session.close()
+    self.close()
 
     # Return
     return valid

@@ -45,7 +45,10 @@ This processes XML data from FXCM http:// feeds.
     # Autoingest stuff
     if cli_args.mode == 'autoingest':
         idx_ingested_list = _autoingest()
-        _process(idx_ingested_list)
+        #print(idx_ingested_list)
+        #sys.exit()
+        if bool(idx_ingested_list) is True:
+            _process(idx_ingested_list)
 
     # Process data
     if cli_args.mode == 'process':

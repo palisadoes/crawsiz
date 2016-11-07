@@ -9,9 +9,12 @@ from random import randint
 import numpy as np
 
 # Import custom libraries
+from crawsiz.db import db
 from crawsiz.db import db_data
 from crawsiz.db import db_pair
+from crawsiz.db.db_orm import Prediction
 from crawsiz.main import report
+from crawsiz.machine import prediction
 from crawsiz.utils import configuration
 
 
@@ -776,11 +779,71 @@ def process(idx_pair, years=6, lookahead=1, components=10):
     directory = config.web_directory()
     filepath = ('%s/%s.html') % (directory, cross)
 
+    # Get data object
+    extract = Extract(
+        idx_pair, lookahead=lookahead, years=years)
+
+    # Update predictions in database
+    # _update_db_predictions(extract, components=components)
+
     # Create a report object
-    journal = report.Report(
-        idx_pair, years=years, lookahead=lookahead, components=components)
+    journal = report.Report(extract, components=components)
 
     # Create report
     html = journal.html()
     with open(filepath, 'w') as f_handle:
         f_handle.write(html)
+
+
+def _update_db_predictions(extract, components=10):
+    """Update database with predictions for current run.
+
+    Args:
+        extract: Extract object
+        components: Number of principal components to analyze
+
+    Returns:
+        history: List of tuples
+
+    """
+    # Initialize key variables
+    predictions = []
+    fxdata = extract.fxdata()
+    idx_pair = extract.idx_pair()
+    all_timestamps = sorted(extract.timestamps())
+    timestamps = all_timestamps[-200: -1]
+
+    # Delete all entries for this pair
+    database = db.Database()
+    session = database.session()
+    session.query(Prediction).filter(
+        Prediction.idx_pair == idx_pair).delete(
+            synchronize_session=False)
+    session.commit()
+    database.close()
+
+    # Get predictions
+    for timestamp in timestamps:
+        feature_vector = vector(fxdata, timestamp)
+        guess = prediction.BlackBox(extract, components=components)
+
+        # Get predictions
+        fxhigh_bayesian = guess.high(feature_vector, bayesian=True)
+        fxlow_bayesian = guess.low(feature_vector, bayesian=True)
+        fxhigh_linear = guess.high(feature_vector, bayesian=False)
+        fxlow_linear = guess.low(feature_vector, bayesian=False)
+
+        # Append predictions to history
+        datapoint = Prediction(
+            idx_pair=idx_pair,
+            fxhigh_linear=int(fxhigh_linear),
+            fxhigh_bayesian=int(fxhigh_bayesian),
+            fxlow_linear=int(fxlow_linear),
+            fxlow_bayesian=int(fxlow_bayesian),
+            timestamp=timestamp
+        )
+        predictions.append(datapoint)
+
+    # Update database
+    database = db.Database()
+    database.add_all(predictions, 9999)

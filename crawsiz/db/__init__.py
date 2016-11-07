@@ -9,6 +9,7 @@ Manages connection pooling among other things.
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session
 
 # Infoset libraries
 from crawsiz.utils import configuration
@@ -54,11 +55,12 @@ def main():
             max_overflow=max_overflow,
             pool_size=pool_size, pool_recycle=3600)
 
-        POOL = sessionmaker(
-            autoflush=True,
-            autocommit=False,
-            bind=db_engine
-        )
+        POOL = scoped_session(
+            sessionmaker(
+                autoflush=True,
+                autocommit=False,
+                bind=db_engine
+            ))
 
     else:
         POOL = None

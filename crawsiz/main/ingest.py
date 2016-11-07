@@ -7,7 +7,6 @@ import time
 from datetime import datetime
 import zipfile
 import shutil
-import pytz
 
 # Append custom application libraries
 from crawsiz.utils import configuration
@@ -255,6 +254,7 @@ class Ingest(object):
                 Pair.pair == self.pair.encode()).one()
             result.last_timestamp = max_timestamp
             session.commit()
+            database.close()
 
             # Archive the ingest file
             _archive_ingest_file(self.filepath)

@@ -1,16 +1,16 @@
 """Library to process the ingest of data files."""
 
 # Standard imports
-from datetime import datetime
 
 # Non standard imports
 
 # Import custom libraries
 from crawsiz.machine import accuracy
 from crawsiz.machine import prediction
-from crawsiz.main import feature
 from crawsiz.utils import general
+from crawsiz.db import db
 from crawsiz.db import db_pair
+from crawsiz.db.db_orm import Prediction
 
 
 __author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
@@ -30,11 +30,11 @@ class Report(object):
 
     """
 
-    def __init__(self, idx_pair, years=6, lookahead=1, components=10):
+    def __init__(self, extract, components=10):
         """Method for intializing the class.
 
         Args:
-            idx_pair: Index of pair
+            extract: Extract object
             years: Number of years of data to process
 
         Returns:
@@ -43,10 +43,8 @@ class Report(object):
         """
         # Initialize key variables
         self.components = components
-
-        # Get data object
-        self.extract = feature.Extract(
-            idx_pair, lookahead=lookahead, years=years)
+        self.extract = extract
+        idx_pair = self.extract.idx_pair()
 
         # Get timestamp of last entry
         timestamp = self.extract.timestamps()[-1]
@@ -215,6 +213,80 @@ Overall Low Predictive Value  : %.2f%%\
         output = ('\n%s\n\n%s') % (linear_output, bayesian_output)
         return output
 
+    def historical(self):
+        """Create table of historical predictions.
+
+        Args:
+            None
+
+        Returns:
+            output: Historical report in HTML
+
+        """
+        # Initialize key variables
+        idx_pair = self.extract.idx_pair()
+        rows = []
+
+        # Create headings
+        heading = (
+            'Date',
+            'Bayesian High',
+            'Linear High',
+            'Bayesian Low',
+            'Linear Low'
+        )
+
+        # Get data from database
+        database = db.Database()
+        session = database.session()
+        result = session.query(Prediction).filter(
+            Prediction.idx_pair == idx_pair)
+        database.close()
+
+        # Process data
+        for instance in result:
+            timestamp = instance.timestamp
+
+            # Create bayesian strings
+            if instance.fxhigh_bayesian > 0:
+                high_bayesian = "Higher High"
+            else:
+                high_bayesian = "Lower High"
+            if instance.fxlow_bayesian > 0:
+                low_bayesian = "Higher Low"
+            else:
+                low_bayesian = "Lower Low"
+
+            # Create linear strings
+            if instance.fxhigh_linear > 0:
+                high_linear = "Higher High"
+            else:
+                high_linear = "Lower High"
+            if instance.fxlow_linear > 0:
+                low_linear = "Higher Low"
+            else:
+                low_linear = "Lower Low"
+
+            # Create timestring
+            timestring = general.utc_timestring(timestamp)
+
+            # Create row for report
+            row = (
+                timestring,
+                high_bayesian,
+                high_linear,
+                low_bayesian,
+                low_linear
+            )
+            rows.append(row)
+
+        # Create report
+        table = _html_table(heading, sorted(rows, reverse=True))
+        html = ('<h2>Historical Predictions</h2>\n%s') % (table)
+
+        # Return HTML
+        return html
+
     def html(self):
         """Provide report as HTML.
 
@@ -233,70 +305,18 @@ Overall Low Predictive Value  : %.2f%%\
 %s
 %s
 %s
+%s
 </html></body>
-""") % (self.pair, _text(self.performance()),
-        _text(self.linear()), _text(self.bayesian()))
-
+""") % (self.pair,
+        _text(self.linear()), _text(self.bayesian()),
+        _text(self.performance()),
+        self.historical())
         # Return
         return output
 
-    def _prediction_history(self):
-        """Provide prediction history.
-
-        Args:
-            None
-
-        Returns:
-            history: List of tuples
-
-        """
-        # Initialize key variables
-        history = []
-        fxdata = self.extract.fxdata()
-
-        # Get predictions
-        for timestamp in self.extract.timestamps():
-            feature_vector = feature.vector(fxdata, timestamp)
-            guess = prediction.BlackBox(
-                self.extract, components=self.components)
-
-            # Get bayesian predictions
-            if guess.high(feature_vector, bayesian=True) < 0:
-                bayesian_high = 'Lower High'
-            else:
-                bayesian_high = 'Higher High'
-
-            if guess.low(feature_vector, bayesian=True) < 0:
-                bayesian_low = 'Lower Low'
-            else:
-                bayesian_low = 'Higher Low'
-
-            # Get linear predictions
-            if guess.high(feature_vector, bayesian=False) < 0:
-                linear_high = 'Lower High'
-            else:
-                linear_high = 'Higher High'
-
-            if guess.low(feature_vector, bayesian=False) < 0:
-                linear_low = 'Lower Low'
-            else:
-                linear_low = 'Higher Low'
-
-            # Append predictions to history
-            history.append(
-                (timestamp,
-                 bayesian_high,
-                 linear_high,
-                 bayesian_low,
-                 linear_low)
-            )
-
-        # Return
-        return history
-
 
 def _text(lines):
-    """Convert text to text like HTML blocks
+    """Convert text to text like HTML blocks.
 
     Args:
         None
@@ -311,3 +331,69 @@ def _text(lines):
         '') % (lines.replace('\n', '<br>\n'))
     output = output.replace('  ', '&nbsp;&nbsp;')
     return output
+
+
+def _html_table(heading, rows, highlight_duplicates=False):
+    """Create HTML table.
+
+    Args:
+        heading: Headings as a tuple
+        rows: List of tuples to be used as HTML row data
+        highlight_duplicates: Highlight duplicates if found
+
+    Returns:
+        html: HTML
+
+    """
+    # Initialize key variables
+    html = '<table cellpadding="7">'
+    thstart = '<th bgcolor="#8CAA39"><font color="#FFFFFF">'
+    td_e = '<td>'
+    odd_row = True
+    odd_color = '#EEEEFF'
+    evn_color = '#B0E0E6'
+    previous_value = None
+
+    # Create header
+    html = ('%s%s%s') % (
+        html, thstart, (('</font></th>\n %s') % (thstart)).join(heading))
+    html = ('%s</th>') % (html)
+
+    # Loop through list
+    for tuple_row in rows:
+        # Convert tuple to a list of strings
+        row = []
+        for item in tuple_row:
+            row.append(('%s') % (item))
+
+        # Logic to alter colors
+        current_value = row[0]
+        if highlight_duplicates is True and current_value == previous_value:
+            pass
+        else:
+            if odd_row is True:
+                odd_row = False
+                color = odd_color
+            else:
+                odd_row = True
+                color = evn_color
+
+        # Print entry row
+        html = ('%s\n <tr bgcolor="%s">\n %s') % (html, color, td_e)
+        html = ('%s%s') % (html, (('</td>%s') % (td_e)).join(row))
+        html = ('%s\n  </td>\n </tr>') % (html)
+
+        # Update previous value
+        previous_value = current_value
+
+    # Finish the table
+    html = ('%s\n</table>\n') % (html)
+
+    # Strip out any duplicated spaces
+    html = ' '.join(html.split())
+
+    # Strip out any duplicated line feeds
+    html = '\n'.join(html.split('\n'))
+
+    # Return
+    return html

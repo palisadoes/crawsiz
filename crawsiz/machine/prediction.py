@@ -122,20 +122,25 @@ class BlackBox(object):
         # Initialize key variables
         self.components = components
 
-        # Do prediction
-        timestamps = extract.timestamps()
-        fxdata = extract.fxdata()
-        last_timestamp = timestamps[-1]
-
-        # Create feature vector
-        self.feature_vector = feature.vector(fxdata, last_timestamp)
-
         # Get feature vectors for entire sample set
-        self.feature_vectors = extract.vectors()
+        feature_vectors = extract.vectors()
+
+        # Linear classifier methodology
+        self.linear_classifier = classifier.Linear(feature_vectors)
 
         # Get list of classes for feature vectors
         self.klasses_high = extract.classes_high(kessler=True)
         self.klasses_low = extract.classes_low(kessler=True)
+
+        # Bayesian classifier methodology (lows)
+        pca_lows = pca.PCA(feature_vectors, self.klasses_low)
+        self.bayes_classifier_lows = classifier.Bayesian(
+            pca_lows, components=self.components)
+
+        # Bayesian classifier methodology (highs)
+        pca_highs = pca.PCA(feature_vectors, self.klasses_high)
+        self.bayes_classifier_highs = classifier.Bayesian(
+            pca_highs, components=self.components)
 
     def high(self, feature_vector, bayesian=True):
         """Provide prediction of a high.
@@ -155,14 +160,11 @@ class BlackBox(object):
         # Process highs
         if bayesian is True:
             # Bayesian classifier methodology
-            pca_highs = pca.PCA(self.feature_vectors, self.klasses_high)
-            bayes_classifier = classifier.Bayesian(
-                pca_highs, components=self.components)
-            prediction = bayes_classifier.classifier(feature_vector)
+            prediction = self.bayes_classifier_highs.classifier(
+                feature_vector)
         else:
             # Linear classifier methodology
-            linear_classifier = classifier.Linear(feature_vectors)
-            prediction = linear_classifier.classifier(
+            prediction = self.linear_classifier.classifier(
                 feature_vector, self.klasses_high)
 
         # Return
@@ -186,14 +188,10 @@ class BlackBox(object):
         # Process lows
         if bayesian is True:
             # Bayesian classifier methodology
-            pca_lows = pca.PCA(self.feature_vectors, self.klasses_low)
-            bayes_classifier = classifier.Bayesian(
-                pca_lows, components=self.components)
-            prediction = bayes_classifier.classifier(feature_vector)
+            prediction = self.bayes_classifier_lows.classifier(feature_vector)
         else:
             # Linear classifier methodology
-            linear_classifier = classifier.Linear(feature_vectors)
-            prediction = linear_classifier.classifier(
+            prediction = self.linear_classifier.classifier(
                 feature_vector, self.klasses_low)
 
         # Return
