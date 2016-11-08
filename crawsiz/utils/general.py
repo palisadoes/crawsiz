@@ -447,9 +447,9 @@ def utc_timestring(timestamp, formatting='%Y-%m-%d %H:%M'):
     datetime_object = datetime.fromtimestamp(timestamp)
 
     # Convert to string
-    datetime_object_utc = datetime_object.replace(tzinfo=timezone('UTC'))
-    datetime_object_local = datetime_object_utc.astimezone(tz.tzutc())
-    result = datetime_object_local.strftime(formatting)
+    datetime_object_local = datetime_object.replace(tzinfo=tz.tzlocal())
+    datetime_object_utc = datetime_object_local.astimezone(tz.tzutc())
+    result = datetime_object_utc.strftime(formatting)
 
     # Return
     return result

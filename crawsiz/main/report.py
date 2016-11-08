@@ -213,7 +213,93 @@ Overall Low Predictive Value  : %.2f%%\
         output = ('\n%s\n\n%s') % (linear_output, bayesian_output)
         return output
 
-    def historical(self):
+    def historical_highs(self):
+        """Create table of historical highs.
+
+        Args:
+            None
+
+        Returns:
+            output: Historical report in HTML
+
+        """
+        # Initialize key variables
+        values = ['Value']
+        dates = ['Date']
+
+        # Create headings
+        heading = ('', '20 Day High', '40 Day High', '60 Day High')
+
+        # Get data from database
+        high_list = self.extract.fxdata().fxhigh()
+        timestamps = self.extract.fxdata().timestamp()
+
+        # Get values
+        for days in range(20, 61, 20):
+            # Trim values to inspect
+            value_list = high_list[-days - 1: -1]
+            times_list = timestamps[-days - 1: -1]
+            interesting_value = max(value_list)
+            index = value_list.index(interesting_value)
+            timestamp = times_list[index]
+            date_string = general.utc_timestring(timestamp)
+
+            # Append data
+            values.append(interesting_value)
+            dates.append(date_string)
+
+        # Create report
+        rows = [values, dates]
+        table = _html_table(heading, rows)
+        html = ('<h2>Historical Highs</h2>\n%s') % (table)
+
+        # Return HTML
+        return html
+
+    def historical_lows(self):
+        """Create table of historical lows.
+
+        Args:
+            None
+
+        Returns:
+            output: Historical report in HTML
+
+        """
+        # Initialize key variables
+        values = ['Value']
+        dates = ['Date']
+
+        # Create headings
+        heading = ('', '20 Day Low', '40 Day Low', '60 Day Low')
+
+        # Get data from database
+        low_list = self.extract.fxdata().fxlow()
+        timestamps = self.extract.fxdata().timestamp()
+
+        # Get values
+        for days in range(20, 61, 20):
+            # Trim values to inspect
+            value_list = low_list[-days - 1: -1]
+            times_list = timestamps[-days - 1: -1]
+            interesting_value = min(value_list)
+            index = value_list.index(interesting_value)
+            timestamp = times_list[index]
+            date_string = general.utc_timestring(timestamp)
+
+            # Append data
+            values.append(interesting_value)
+            dates.append(date_string)
+
+        # Create report
+        rows = [values, dates]
+        table = _html_table(heading, rows)
+        html = ('<h2>Historical Lows</h2>\n%s') % (table)
+
+        # Return HTML
+        return html
+
+    def historical_predictions(self):
         """Create table of historical predictions.
 
         Args:
@@ -306,11 +392,16 @@ Overall Low Predictive Value  : %.2f%%\
 %s
 %s
 %s
+%s
+%s
 </html></body>
 """) % (self.pair,
         _text(self.linear()), _text(self.bayesian()),
         _text(self.performance()),
-        self.historical())
+        self.historical_highs(),
+        self.historical_lows(),
+        self.historical_predictions())
+
         # Return
         return output
 
