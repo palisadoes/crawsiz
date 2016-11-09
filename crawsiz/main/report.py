@@ -228,14 +228,15 @@ Overall Low Predictive Value  : %.2f%%\
         dates = ['Date']
 
         # Create headings
-        heading = ('', '20 Day High', '40 Day High', '60 Day High')
+        heading = (
+            '', '60 Day High', '120 Day High', '180 Day High', '240 Day High')
 
         # Get data from database
         high_list = self.extract.fxdata().fxhigh()
         timestamps = self.extract.fxdata().timestamp()
 
         # Get values
-        for days in range(20, 61, 20):
+        for days in range(60, 241, 60):
             # Trim values to inspect
             value_list = high_list[-days - 1: -1]
             times_list = timestamps[-days - 1: -1]
@@ -271,14 +272,15 @@ Overall Low Predictive Value  : %.2f%%\
         dates = ['Date']
 
         # Create headings
-        heading = ('', '20 Day Low', '40 Day Low', '60 Day Low')
+        heading = (
+            '', '60 Day Low', '120 Day Low', '180 Day Low', '240 Day Low')
 
         # Get data from database
         low_list = self.extract.fxdata().fxlow()
         timestamps = self.extract.fxdata().timestamp()
 
         # Get values
-        for days in range(20, 61, 20):
+        for days in range(60, 241, 60):
             # Trim values to inspect
             value_list = low_list[-days - 1: -1]
             times_list = timestamps[-days - 1: -1]
