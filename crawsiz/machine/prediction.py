@@ -41,13 +41,8 @@ class Tomorrow(object):
         # Initialize key variables
         self.components = components
 
-        # Do prediction
-        timestamps = extract.timestamps()
-        fxdata = extract.fxdata()
-        last_timestamp = timestamps[-1]
-
         # Create feature vector
-        self.feature_vector = feature.vector(fxdata, last_timestamp)
+        self.feature_vector = extract.last_vector()
 
         # Create prediction object
         self._prediction = BlackBox(extract, components=components)

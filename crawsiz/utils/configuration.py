@@ -118,6 +118,27 @@ class Config(object):
         # Return
         return result
 
+    def lookahead(self):
+        """Get lookahead.
+
+        Args:
+            None
+
+        Returns:
+            result: result
+
+        """
+        # Get result
+        sub_key = 'lookahead'
+        result = None
+        key = 'general'
+
+        # Get new result
+        result = _key_sub_key(key, sub_key, self.config_dict)
+
+        # Return
+        return result
+
     def log_file(self):
         """Get log_file.
 

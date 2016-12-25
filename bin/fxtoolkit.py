@@ -125,7 +125,8 @@ def _process(idx_ingested_list=None):
 
     """
     # Initialize key variables
-    lookahead = 1
+    config = configuration.Config()
+    lookahead = config.lookahead()
     components = 10
     years = 6
     argument_list = []
@@ -170,7 +171,7 @@ def _index():
     """Create index.html page.
 
     Args:
-        None
+        config: Configuration object
 
     Returns:
         None.

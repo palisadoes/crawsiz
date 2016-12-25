@@ -103,13 +103,18 @@ class Classify(object):
 
         """
         # Initialize key variables
-        intermediary = [-1] * self.lookahead
+        intermediary = [-1]
+
+        ## Classify
+        #intermediary = [-1] * self.lookahead
+        #for pointer in range(0, self.lookahead):
+        #    if values[self.start + pointer + 1] > values[
+        #            self.start + pointer]:
+        #        intermediary[pointer] = 1
 
         # Classify
-        for pointer in range(0, self.lookahead):
-            if values[self.start + pointer + 1] > values[
-                    self.start + pointer]:
-                intermediary[pointer] = 1
+        if values[self.start + self.lookahead] > values[self.start]:
+            intermediary = [1]
 
         # Return
         if kessler is True:
@@ -678,7 +683,7 @@ class Extract(object):
         return data
 
     def vectors(self):
-        """Method returning all feature vectors.
+        """Method returning all feature vectors up to fxdata[-lookahead].
 
         Args:
             None
@@ -689,6 +694,38 @@ class Extract(object):
         """
         # Initialize key variables
         data = np.asarray(self.feature_vectors)
+
+        # Return data
+        return data
+
+    def last_vector(self):
+        """Method returning feature vector for fxdata[-1].
+
+        Args:
+            None
+
+        Returns:
+            data: Numpy array of all feature vectors.
+
+        """
+        # Initialize key variables
+        data = vector(self._fxdata, self.last_timestamp())
+
+        # Return data
+        return data
+
+    def last_timestamp(self):
+        """Method returning timestamp for fxdata[-1].
+
+        Args:
+            None
+
+        Returns:
+            data: Numpy array of all feature vectors.
+
+        """
+        # Initialize key variables
+        data = self._fxdata.timestamp()[-1]
 
         # Return data
         return data

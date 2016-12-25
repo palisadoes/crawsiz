@@ -7,6 +7,7 @@
 # Import custom libraries
 from crawsiz.machine import accuracy
 from crawsiz.machine import prediction
+from crawsiz.utils import configuration
 from crawsiz.utils import general
 from crawsiz.db import db
 from crawsiz.db import db_pair
@@ -45,10 +46,14 @@ class Report(object):
         self.components = components
         self.extract = extract
         idx_pair = self.extract.idx_pair()
+        config = configuration.Config()
 
         # Get timestamp of last entry
-        timestamp = self.extract.timestamps()[-1]
+        timestamp = self.extract.last_timestamp()
+        prediction_seconds = 1440 * 60 * config.lookahead()
         self.date = general.utc_timestring(timestamp)
+        self.date_of_prediction = general.utc_timestring(
+            timestamp + prediction_seconds)
 
         # Create linear accuracy object
         self._linear = accuracy.Linear(self.extract)
@@ -65,6 +70,27 @@ class Report(object):
         cross = db_pair.GetIDX(idx_pair)
         self.pair = cross.pair().upper()
 
+    def summary(self):
+        """Provide summary header for the report.
+
+        Args:
+            None
+
+        Returns:
+            output: Report header
+
+        """
+        # Create output
+        output = ("""\
+Prediction for Date: %s
+Last Date Processed: %s
+
+
+""") % (self.date_of_prediction, self.date)
+
+        # Return
+        return output
+
     def bayesian(self):
         """Provide report on bayesian predictions.
 
@@ -77,9 +103,9 @@ class Report(object):
         """
         # Initialize key variables
         prefix = ("""\
-Bayesian Prediction - %s - %s
-===============================================
-""") % (self.pair, self.date)
+Bayesian Prediction - %s
+============================
+""") % (self.pair)
 
         # Process highs
         guessed_class = self.guess.high(bayesian=True)
@@ -127,9 +153,9 @@ Bayesian Prediction - %s - %s
         """
         # Initialize key variables
         prefix = ("""\
-Linear Prediction - %s - %s
-=============================================
-""") % (self.pair, self.date)
+Linear Prediction - %s
+==========================
+""") % (self.pair)
 
         # Process highs
         guessed_class = self.guess.high(bayesian=False)
@@ -390,6 +416,8 @@ Overall Low Predictive Value  : %.2f%%\
 <html>
 <head><title>%s</title></head>
 <body>
+<h1>%s</h1>
+%s
 %s
 %s
 %s
@@ -398,7 +426,10 @@ Overall Low Predictive Value  : %.2f%%\
 %s
 </html></body>
 """) % (self.pair,
-        _text(self.linear()), _text(self.bayesian()),
+        self.pair,
+        _text(self.summary()),
+        _text(self.linear()),
+        _text(self.bayesian()),
         _text(self.performance()),
         self.historical_highs(),
         self.historical_lows(),
