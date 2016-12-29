@@ -10,10 +10,6 @@ from crawsiz.machine import classifier
 from crawsiz.main import feature
 
 
-__author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
-__version__ = '0.0.1'
-
-
 class Tomorrow(object):
     """Class to predict tomorrow's outcome.
 

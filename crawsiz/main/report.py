@@ -1,35 +1,20 @@
 """Library to process the ingest of data files."""
 
 # Standard imports
+from collections import defaultdict
 
 # Non standard imports
 
 # Import custom libraries
+from crawsiz.main import feature
 from crawsiz.machine import accuracy
 from crawsiz.machine import prediction
-from crawsiz.utils import configuration
 from crawsiz.utils import general
-from crawsiz.db import db
 from crawsiz.db import db_pair
-from crawsiz.db.db_orm import Prediction
 
 
-__author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
-__version__ = '0.0.1'
-
-
-class Report(object):
-    """Class to classify database data.
-
-    Args:
-        None
-
-    Returns:
-        None
-
-    Methods:
-
-    """
+class Data(object):
+    """Class to get report data."""
 
     def __init__(self, extract, components=10):
         """Method for intializing the class.
@@ -43,55 +28,216 @@ class Report(object):
 
         """
         # Initialize key variables
-        self.components = components
         self.extract = extract
-        idx_pair = self.extract.idx_pair()
-        config = configuration.Config()
-
-        # Get timestamp of last entry
-        timestamp = self.extract.last_timestamp()
-        prediction_seconds = 1440 * 60 * config.lookahead()
-        self.date = general.utc_timestring(timestamp)
-        self.date_of_prediction = general.utc_timestring(
-            timestamp + prediction_seconds)
 
         # Create linear accuracy object
         self._linear = accuracy.Linear(self.extract)
 
         # Create bayesian accuracy object
         self._bayesian = accuracy.Bayesian(
-            self.extract, components=self.components)
+            self.extract, components=components)
 
         # Do prediction based on last entry in extract
         self.guess = prediction.Tomorrow(
-            self.extract, components=self.components)
-
-        # Get pair as string
-        cross = db_pair.GetIDX(idx_pair)
-        self.pair = cross.pair().upper()
+            self.extract, components=components)
 
     def summary(self):
-        """Provide summary header for the report.
+        """Create summary of predicted values.
 
         Args:
             None
 
         Returns:
-            output: Report header
+            data_dict: Dict of formatted data
 
         """
-        # Create output
+        # Initialize key variables
+        data_dict = defaultdict(lambda: defaultdict(dict))
+
+        # Assign values
+        data_dict['bayesian_high'] = self._bayesian_high()
+        data_dict['bayesian_low'] = self._bayesian_low()
+        data_dict['linear_high'] = self._linear_high()
+        data_dict['linear_low'] = self._linear_low()
+
+        # Return
+        return data_dict
+
+    def _format_data(self, guessed_class, guessed_accuracy):
+        """Format data from predictions.
+
+        Args:
+            None
+
+        Returns:
+            data_dict: Dict of formatted data
+
+        """
+        # Initialize key variables
+        data_dict = {
+            'predicted_class': guessed_class,
+            'accuracy': guessed_accuracy
+        }
+
+        # Return
+        return data_dict
+
+    def _bayesian_high(self):
+        """Provide report on bayesian high predictions.
+
+        Args:
+            None
+
+        Returns:
+            output: Performance report
+
+        """
+        # Initialize key variables
+        guessed_accuracy = None
+
+        # Process highs
+        guessed_class = self.guess.high(bayesian=True)
+
+        # Print prediction
+        if guessed_class == -1:
+            guessed_accuracy = self._bayesian.lowerhighs() * 100
+        else:
+            guessed_accuracy = self._bayesian.higherhighs() * 100
+
+        # Return
+        output = self._format_data(guessed_class, guessed_accuracy)
+        return output
+
+    def _bayesian_low(self):
+        """Provide report on bayesian low predictions.
+
+        Args:
+            None
+
+        Returns:
+            output: Performance report
+
+        """
+        # Initialize key variables
+        guessed_accuracy = None
+
+        # Process lows
+        guessed_class = self.guess.low(bayesian=True)
+
+        # Print prediction
+        if guessed_class == -1:
+            guessed_accuracy = self._bayesian.lowerlows() * 100
+        else:
+            guessed_accuracy = self._bayesian.lowerlows() * 100
+
+        # Return
+        output = self._format_data(guessed_class, guessed_accuracy)
+        return output
+
+    def _linear_high(self):
+        """Provide report on linear high predictions.
+
+        Args:
+            None
+
+        Returns:
+            output: Performance report
+
+        """
+        # Process highs
+        guessed_class = self.guess.high(bayesian=False)
+
+        # Print prediction
+        if guessed_class == -1:
+            guessed_accuracy = self._linear.lowerhighs() * 100
+        else:
+            guessed_accuracy = self._linear.higherhighs() * 100
+
+        # Return
+        output = self._format_data(guessed_class, guessed_accuracy)
+        return output
+
+    def _linear_low(self):
+        """Provide report on linear low predictions.
+
+        Args:
+            None
+
+        Returns:
+            output: Performance report
+
+        """
+        # Process lows
+        guessed_class = self.guess.low(bayesian=False)
+
+        # Print prediction
+        if guessed_class == -1:
+            guessed_accuracy = self._linear.lowerlows() * 100
+        else:
+            guessed_accuracy = self._linear.lowerlows() * 100
+
+        # Return
+        output = self._format_data(guessed_class, guessed_accuracy)
+        return output
+
+
+class Report(object):
+    """Class to create reports."""
+
+    def __init__(self, data):
+        """Method for intializing the class.
+
+        Args:
+            data: Dict of data to use in report
+
+        Returns:
+            None
+
+        """
+        # Initialize key variables
+        self.data = data
+        idx_pair = data['idx_pair']
+        years = data['years']
+        self._fxdata = feature.getdata(idx_pair, years=years)
+
+        # Get pair as string
+        cross = db_pair.GetIDX(idx_pair)
+        self.pair = cross.pair().upper()
+
+    def html(self):
+        """Provide report as HTML.
+
+        Args:
+            None
+
+        Returns:
+            output: Full report in HTML
+
+        """
+        # Initialize key variables
         output = ("""\
-Prediction for Date: %s
-Last Date Processed: %s
-
-
-""") % (self.date_of_prediction, self.date)
+<html>
+<head><title>%s</title></head>
+<body>
+<h1>%s</h1>
+%s
+%s
+%s
+%s
+%s
+</html></body>
+""") % (self.pair,
+        self.pair,
+        _text(self._summary()),
+        _text(self._linear()),
+        _text(self._bayesian()),
+        self._historical_highs(),
+        self._historical_lows())
 
         # Return
         return output
 
-    def bayesian(self):
+    def _bayesian(self):
         """Provide report on bayesian predictions.
 
         Args:
@@ -102,46 +248,39 @@ Last Date Processed: %s
 
         """
         # Initialize key variables
-        prefix = ("""\
-Bayesian Prediction - %s
-============================
-""") % (self.pair)
+        predictions = self.data['predictions']
+        rows = []
 
-        # Process highs
-        guessed_class = self.guess.high(bayesian=True)
+        # Create headings
+        heading = (
+            'Day', 'Date', 'High', 'High Accuracy', 'Low', 'Low Accuracy')
 
-        # Print prediction
-        if guessed_class == -1:
-            high_result = (
-                '%-12s: %.2f%% probability'
-                '') % (
-                    'Lower high', self._bayesian.lowerhighs() * 100)
-        else:
-            high_result = (
-                '%-12s: %.2f%% probability'
-                '') % (
-                    'Higher high', self._bayesian.higherhighs() * 100)
+        # Get data
+        for next_lookahead, data_dict in sorted(predictions.items()):
+            # Create symbols for table
+            if data_dict['bayesian_high']['predicted_class'] > 0:
+                high_direction = '^'
+            else:
+                high_direction = 'v'
+            if data_dict['bayesian_low']['predicted_class'] > 0:
+                low_direction = '^'
+            else:
+                low_direction = 'v'
+            rows.append((
+                next_lookahead,
+                self._lookahead_date(next_lookahead),
+                high_direction,
+                '{:1.2f}%'.format(data_dict['bayesian_high']['accuracy']),
+                low_direction,
+                '{:1.2f}%'.format(data_dict['bayesian_low']['accuracy'])
+            ))
 
-        # Process lows
-        guessed_class = self.guess.low(bayesian=True)
+        # Create table, return html
+        table = _html_table(heading, rows)
+        html = ('<h2>Bayesian Prediction</h2>\n%s') % (table)
+        return html
 
-        # Print prediction
-        if guessed_class == -1:
-            low_result = (
-                '%-12s: %.2f%% probability'
-                '') % (
-                    'Lower low', self._bayesian.lowerlows() * 100)
-        else:
-            low_result = (
-                '%-12s: %.2f%% probability'
-                '') % (
-                    'Higher low', self._bayesian.higherlows() * 100)
-
-        # Return
-        output = ('\n%s\n%s\n%s') % (prefix, high_result, low_result)
-        return output
-
-    def linear(self):
+    def _linear(self):
         """Provide report on linear predictions.
 
         Args:
@@ -152,94 +291,82 @@ Bayesian Prediction - %s
 
         """
         # Initialize key variables
-        prefix = ("""\
-Linear Prediction - %s
-==========================
-""") % (self.pair)
+        predictions = self.data['predictions']
+        rows = []
 
-        # Process highs
-        guessed_class = self.guess.high(bayesian=False)
+        # Create headings
+        heading = (
+            'Day', 'Date', 'High', 'High Accuracy', 'Low', 'Low Accuracy')
 
-        # Print prediction
-        if guessed_class == -1:
-            high_result = (
-                '%-12s: %.2f%% probability'
-                '') % (
-                    'Lower high', self._linear.lowerhighs() * 100)
-        else:
-            high_result = (
-                '%-12s: %.2f%% probability'
-                '') % (
-                    'Higher high', self._linear.higherhighs() * 100)
+        # Get data
+        for next_lookahead, data_dict in sorted(predictions.items()):
+            # Create symbols for table
+            if data_dict['linear_high']['predicted_class'] > 0:
+                high_direction = '^'
+            else:
+                high_direction = 'v'
+            if data_dict['linear_low']['predicted_class'] > 0:
+                low_direction = '^'
+            else:
+                low_direction = 'v'
+            rows.append((
+                next_lookahead,
+                self._lookahead_date(next_lookahead),
+                high_direction,
+                '{:1.2f}%'.format(data_dict['linear_high']['accuracy']),
+                low_direction,
+                '{:1.2f}%'.format(data_dict['linear_low']['accuracy'])
+            ))
 
-        # Process lows
-        guessed_class = self.guess.low(bayesian=False)
+        # Create table, return html
+        table = _html_table(heading, rows)
+        html = ('<h2>Linear Prediction</h2>\n%s') % (table)
+        return html
 
-        # Print prediction
-        if guessed_class == -1:
-            low_result = (
-                '%-12s: %.2f%% probability'
-                '') % (
-                    'Lower low', self._linear.lowerlows() * 100)
-        else:
-            low_result = (
-                '%-12s: %.2f%% probability'
-                '') % (
-                    'Higher low', self._linear.higherlows() * 100)
+    def _lookahead_date(self, lookahead):
+        """Get date of lookahead.
+
+        Args:
+            lookahead: Lookahead in days
+
+        Returns:
+            date_of_prediction: Date of lookahead
+
+        """
+        # Initialize key varialbes
+        last_timestamp = self.data['last_timestamp']
+        prediction_seconds = 1440 * 60 * lookahead
+        date_of_prediction = general.utc_timestring(
+            last_timestamp + prediction_seconds)
 
         # Return
-        output = ('\n%s\n%s\n%s') % (prefix, high_result, low_result)
-        return output
+        return date_of_prediction
 
-    def performance(self):
-        """Provide performance data for the report.
+    def _summary(self):
+        """Provide summary header for the report.
 
         Args:
             None
 
         Returns:
-            output: Performance report
+            output: Report header
 
         """
-        # Create linear results
-        linear_output = ("""\
-Linear Classifier Performance - %s
-======================================
+        # Initialize key varialbes
+        last_timestamp = self.data['last_timestamp']
+        last_data_date = general.utc_timestring(last_timestamp)
 
-Higher High Predictive Value  : %.2f%%
-Lower High Predictive Value   : %.2f%%
-Overall High Predictive Value : %.2f%%
+        # Create output
+        output = ("""\
+Last Date Processed: %s
 
-Higher Low Predictive Value   : %.2f%%
-Lower Low Predictive Value    : %.2f%%
-Overall Low Predictive Value  : %.2f%%\
-""") % (self.pair,
-        self._linear.higherhighs() * 100, self._linear.lowerhighs() * 100,
-        self._linear.highs() * 100, self._linear.higherlows() * 100,
-        self._linear.lowerlows() * 100, self._linear.lows() * 100)
 
-        # Create bayesian results
-        bayesian_output = ("""\
-Bayesian Classifier Performance - %s
-========================================
-
-Higher High Predictive Value  : %.2f%%
-Lower High Predictive Value   : %.2f%%
-Overall High Predictive Value : %.2f%%
-
-Higher Low Predictive Value   : %.2f%%
-Lower Low Predictive Value    : %.2f%%
-Overall Low Predictive Value  : %.2f%%\
-""") % (self.pair,
-        self._bayesian.higherhighs() * 100, self._bayesian.lowerhighs() * 100,
-        self._bayesian.highs() * 100, self._bayesian.higherlows() * 100,
-        self._bayesian.lowerlows() * 100, self._bayesian.lows() * 100)
+""") % (last_data_date)
 
         # Return
-        output = ('\n%s\n\n%s') % (linear_output, bayesian_output)
         return output
 
-    def historical_highs(self):
+    def _historical_highs(self):
         """Create table of historical highs.
 
         Args:
@@ -258,8 +385,8 @@ Overall Low Predictive Value  : %.2f%%\
             '', '60 Day High', '120 Day High', '180 Day High', '240 Day High')
 
         # Get data from database
-        high_list = self.extract.fxdata().fxhigh()
-        timestamps = self.extract.fxdata().timestamp()
+        high_list = self._fxdata.fxhigh()
+        timestamps = self._fxdata.timestamp()
 
         # Get values
         for days in range(60, 241, 60):
@@ -283,7 +410,7 @@ Overall Low Predictive Value  : %.2f%%\
         # Return HTML
         return html
 
-    def historical_lows(self):
+    def _historical_lows(self):
         """Create table of historical lows.
 
         Args:
@@ -302,8 +429,8 @@ Overall Low Predictive Value  : %.2f%%\
             '', '60 Day Low', '120 Day Low', '180 Day Low', '240 Day Low')
 
         # Get data from database
-        low_list = self.extract.fxdata().fxlow()
-        timestamps = self.extract.fxdata().timestamp()
+        low_list = self._fxdata.fxlow()
+        timestamps = self._fxdata.timestamp()
 
         # Get values
         for days in range(60, 241, 60):
@@ -326,117 +453,6 @@ Overall Low Predictive Value  : %.2f%%\
 
         # Return HTML
         return html
-
-    def historical_predictions(self):
-        """Create table of historical predictions.
-
-        Args:
-            None
-
-        Returns:
-            output: Historical report in HTML
-
-        """
-        # Initialize key variables
-        idx_pair = self.extract.idx_pair()
-        rows = []
-
-        # Create headings
-        heading = (
-            'Date',
-            'Bayesian High',
-            'Linear High',
-            'Bayesian Low',
-            'Linear Low'
-        )
-
-        # Get data from database
-        database = db.Database()
-        session = database.session()
-        result = session.query(Prediction).filter(
-            Prediction.idx_pair == idx_pair)
-        database.close()
-
-        # Process data
-        for instance in result:
-            timestamp = instance.timestamp
-
-            # Create bayesian strings
-            if instance.fxhigh_bayesian > 0:
-                high_bayesian = "Higher High"
-            else:
-                high_bayesian = "Lower High"
-            if instance.fxlow_bayesian > 0:
-                low_bayesian = "Higher Low"
-            else:
-                low_bayesian = "Lower Low"
-
-            # Create linear strings
-            if instance.fxhigh_linear > 0:
-                high_linear = "Higher High"
-            else:
-                high_linear = "Lower High"
-            if instance.fxlow_linear > 0:
-                low_linear = "Higher Low"
-            else:
-                low_linear = "Lower Low"
-
-            # Create timestring
-            timestring = general.utc_timestring(timestamp)
-
-            # Create row for report
-            row = (
-                timestring,
-                high_bayesian,
-                high_linear,
-                low_bayesian,
-                low_linear
-            )
-            rows.append(row)
-
-        # Create report
-        table = _html_table(heading, sorted(rows, reverse=True))
-        html = ('<h2>Historical Predictions</h2>\n%s') % (table)
-
-        # Return HTML
-        return html
-
-    def html(self):
-        """Provide report as HTML.
-
-        Args:
-            None
-
-        Returns:
-            output: Full report in HTML
-
-        """
-        # Initialize key variables
-        output = ("""\
-<html>
-<head><title>%s</title></head>
-<body>
-<h1>%s</h1>
-%s
-%s
-%s
-%s
-%s
-%s
-%s
-</html></body>
-""") % (self.pair,
-        self.pair,
-        _text(self.summary()),
-        _text(self.linear()),
-        _text(self.bayesian()),
-        _text(self.performance()),
-        self.historical_highs(),
-        self.historical_lows(),
-        self.historical_predictions())
-
-        # Return
-        return output
 
 
 def _text(lines):

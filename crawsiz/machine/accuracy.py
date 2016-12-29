@@ -9,10 +9,6 @@ from crawsiz.machine import classifier
 from crawsiz.machine import pca
 
 
-__author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
-__version__ = '0.0.1'
-
-
 class Linear(object):
     """Class to determine Linear prediction accuracy.
 

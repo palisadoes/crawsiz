@@ -4,11 +4,14 @@
 import time
 import decimal
 from random import randint
+from collections import defaultdict
 
 # Non standard imports
 import numpy as np
+from sqlalchemy import and_
 
 # Import custom libraries
+from crawsiz.utils import log
 from crawsiz.db import db
 from crawsiz.db import db_data
 from crawsiz.db import db_pair
@@ -16,10 +19,6 @@ from crawsiz.db.db_orm import Prediction
 from crawsiz.main import report
 from crawsiz.machine import prediction
 from crawsiz.utils import configuration
-
-
-__author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
-__version__ = '0.0.1'
 
 
 class Classify(object):
@@ -105,12 +104,12 @@ class Classify(object):
         # Initialize key variables
         intermediary = [-1]
 
-        ## Classify
-        #intermediary = [-1] * self.lookahead
-        #for pointer in range(0, self.lookahead):
-        #    if values[self.start + pointer + 1] > values[
-        #            self.start + pointer]:
-        #        intermediary[pointer] = 1
+        # # Classify
+        # intermediary = [-1] * self.lookahead
+        # for pointer in range(0, self.lookahead):
+        #     if values[self.start + pointer + 1] > values[
+        #             self.start + pointer]:
+        #         intermediary[pointer] = 1
 
         # Classify
         if values[self.start + self.lookahead] > values[self.start]:
@@ -579,6 +578,7 @@ class Extract(object):
         self.feature_vectors = []
         self._timestamps = []
         self._idx_pair = idx_pair
+        self._lookahead = lookahead
 
         # Get data object for
         self._fxdata = getdata(idx_pair, years=years)
@@ -613,6 +613,19 @@ class Extract(object):
         """
         # Return
         return self._fxdata
+
+    def lookahead(self):
+        """Return lookahead.
+
+        Args:
+            None
+
+        Returns:
+            self._lookahead
+
+        """
+        # Return
+        return self._lookahead
 
     def idx_pair(self):
         """Return idx_pair.
@@ -804,6 +817,9 @@ def process(idx_pair, years=6, lookahead=1, components=10):
         None
 
     """
+    # Initialize key variables
+    data_dict = defaultdict(lambda: defaultdict(dict))
+
     # Sleep a random amount of time
     time.sleep(randint(0, 10))
 
@@ -811,25 +827,48 @@ def process(idx_pair, years=6, lookahead=1, components=10):
     cross_object = db_pair.GetIDX(idx_pair)
     cross = cross_object.pair().lower()
 
+    # Log
+    log_message = 'Starting to process {}.'.format(cross.upper())
+    log.log2quiet(1001, log_message)
+
     # Get directory for web output
     config = configuration.Config()
     directory = config.web_directory()
     filepath = ('%s/%s.html') % (directory, cross)
 
-    # Get data object
-    extract = Extract(
-        idx_pair, lookahead=lookahead, years=years)
+    # Get data objects
+    for next_lookahead in range(1, lookahead + 1):
+        # Create extract object
+        extract = Extract(
+            idx_pair, lookahead=next_lookahead, years=years)
 
-    # Update predictions in database
-    _update_db_predictions(extract, components=components)
+        # Get prediction data
+        data_dict['predictions'][next_lookahead] = report.Data(
+            extract, components=components).summary()
+
+        # Get last_timestamp
+        last_timestamp = extract.last_timestamp()
+
+        # Update predictions in database
+        # _update_db_predictions(extract, components=components)
+
+    # Add additional information to data_dict
+    data_dict['years'] = years
+    data_dict['idx_pair'] = idx_pair
+    data_dict['lookahead'] = lookahead
+    data_dict['last_timestamp'] = last_timestamp
 
     # Create a report object
-    journal = report.Report(extract, components=components)
+    journal = report.Report(data_dict)
 
     # Create report
     html = journal.html()
     with open(filepath, 'w') as f_handle:
         f_handle.write(html)
+
+    # Log
+    log_message = 'Ended processing {}.'.format(cross.upper())
+    log.log2quiet(1008, log_message)
 
 
 def _update_db_predictions(extract, components=10):
@@ -845,6 +884,7 @@ def _update_db_predictions(extract, components=10):
     """
     # Initialize key variables
     predictions = []
+    lookahead = extract.lookahead()
     fxdata = extract.fxdata()
     idx_pair = extract.idx_pair()
     all_timestamps = sorted(extract.timestamps())
@@ -854,8 +894,10 @@ def _update_db_predictions(extract, components=10):
     database = db.Database()
     session = database.session()
     session.query(Prediction).filter(
-        Prediction.idx_pair == idx_pair).delete(
-            synchronize_session=False)
+        and_(
+            Prediction.idx_pair == idx_pair,
+            Prediction.lookahead == lookahead)).delete(
+                synchronize_session=False)
     session.commit()
     database.close()
 
@@ -877,6 +919,7 @@ def _update_db_predictions(extract, components=10):
             fxhigh_bayesian=int(fxhigh_bayesian),
             fxlow_linear=int(fxlow_linear),
             fxlow_bayesian=int(fxlow_bayesian),
+            lookahead=lookahead,
             timestamp=timestamp
         )
         predictions.append(datapoint)

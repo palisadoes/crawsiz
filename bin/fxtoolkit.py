@@ -18,10 +18,6 @@ from crawsiz.utils import cli
 from crawsiz.db import db_pair
 
 
-__author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
-__version__ = '0.0.1'
-
-
 def main():
     """Format Nagios host configuration.
 

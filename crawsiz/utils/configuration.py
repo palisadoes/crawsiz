@@ -182,7 +182,7 @@ class Config(object):
             log_message = (
                 'ingest_directory: "%s" '
                 'in configuration doesn\'t exist!') % (value)
-            log.log2die(1007, log_message)
+            log.log2die(1018, log_message)
 
         # Return
         return value
@@ -209,7 +209,7 @@ class Config(object):
             log_message = (
                 'archive_directory: "%s" '
                 'in configuration doesn\'t exist!') % (value)
-            log.log2die(1007, log_message)
+            log.log2die(1019, log_message)
 
         # Return
         return value

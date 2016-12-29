@@ -9,10 +9,6 @@ import sys
 from crawsiz.utils import log
 
 
-__author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
-__version__ = '0.0.1'
-
-
 class ProcessCli(object):
     """Class gathers all CLI information.
 

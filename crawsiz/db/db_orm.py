@@ -109,6 +109,9 @@ class Prediction(BASE):
 
     fxlow_bayesian = Column(INTEGER, default=None)
 
+    lookahead = Column(
+        BIGINT(unsigned=True), nullable=False, server_default='0')
+
     timestamp = Column(
         BIGINT(unsigned=True), nullable=False, server_default='0')
 

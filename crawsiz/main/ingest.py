@@ -17,10 +17,6 @@ from crawsiz.db import db
 from crawsiz.db.db_orm import Data, Pair
 
 
-__author__ = 'Peter Harrison (Colovore LLC.) <peter@colovore.com>'
-__version__ = '0.0.1'
-
-
 class Valid(object):
     """Class Checks the validity of an ingest file.
 
@@ -70,11 +66,14 @@ class Valid(object):
 
         # Fail if invalid filename
         if bool(match) is False:
-            log_message = (
-                'File "%s" has invalid name. '
-                '') % (self.filepath)
-            log.log2warn(1003, log_message)
-            validity = False
+            if filename.lower().endswith('.csv') is True:
+                log_message = (
+                    'File "%s" has invalid name. '
+                    '') % (self.filepath)
+                log.log2warn(1003, log_message)
+                validity = False
+            else:
+                validity = False
         else:
             # Fail if invalid pair
             pair = match.group(1).upper()
