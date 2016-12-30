@@ -850,7 +850,7 @@ def process(idx_pair, years=6, lookahead=1, components=10):
         last_timestamp = extract.last_timestamp()
 
         # Update predictions in database
-        _update_db_predictions(extract, components=components)
+        # _update_db_predictions(extract, components=components)
 
     # Add additional information to data_dict
     data_dict['years'] = years
