@@ -67,7 +67,7 @@ def _autoingest():
     filepaths = []
     pairs = []
     idx_ingested = []
-    available_cores = min(1, multiprocessing.cpu_count() - 1)
+    available_cores = max(1, multiprocessing.cpu_count() - 1)
 
     # Get list of files in ingest directory
     for filename in os.listdir(config.ingest_directory()):
@@ -128,7 +128,7 @@ def _process(idx_ingested_list=None):
     components = 10
     years = 6
     argument_list = []
-    available_cores = min(1, multiprocessing.cpu_count() - 1)
+    available_cores = max(1, multiprocessing.cpu_count() - 1)
 
     # Process data
     if idx_ingested_list is None:

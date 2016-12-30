@@ -87,7 +87,7 @@ class Prediction(BASE):
     __tablename__ = 'xs_prediction'
     __table_args__ = (
         UniqueConstraint(
-            'idx_pair', 'timestamp'),
+            'idx_pair', 'timestamp', 'lookahead'),
         {
             'mysql_engine': 'InnoDB'
         }
