@@ -897,7 +897,7 @@ def _update_db_predictions(extract, components=10):
         and_(
             Prediction.idx_pair == idx_pair,
             Prediction.lookahead == lookahead)).delete(
-                synchronize_session=False)
+                synchronize_session='fetch')
     session.commit()
     database.close()
 

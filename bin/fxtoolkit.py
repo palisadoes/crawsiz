@@ -9,6 +9,7 @@ Test
 import os
 import time
 from multiprocessing import Pool
+import multiprocessing
 
 # Import crawsiz libraries
 from crawsiz.main import ingest
@@ -66,6 +67,7 @@ def _autoingest():
     filepaths = []
     pairs = []
     idx_ingested = []
+    available_cores = min(1, multiprocessing.cpu_count() - 1)
 
     # Get list of files in ingest directory
     for filename in os.listdir(config.ingest_directory()):
@@ -89,7 +91,7 @@ def _autoingest():
         pairs.append(filecheck.pair())
 
     # Create a pool of sub process resources
-    with Pool(processes=5) as pool:
+    with Pool(processes=available_cores) as pool:
         # Create sub processes from the pool
         pool.map(ingest.ingest, filepaths)
 
@@ -126,6 +128,7 @@ def _process(idx_ingested_list=None):
     components = 10
     years = 6
     argument_list = []
+    available_cores = min(1, multiprocessing.cpu_count() - 1)
 
     # Process data
     if idx_ingested_list is None:
@@ -138,7 +141,7 @@ def _process(idx_ingested_list=None):
         )
 
     # Create a pool of sub process resources
-    with Pool(processes=5) as pool:
+    with Pool(processes=available_cores) as pool:
         # Create sub processes from the pool
         pool.map(_pool_wrapper, argument_list)
 
